@@ -14,10 +14,15 @@ import { DayWeather, HourlyWeather } from '../types';
 
 interface WeatherWidgetProps {
   weather: DayWeather;
+  updatedAt?: string | null; // canlı veri zamanı
+  isOffline?: boolean;
 }
 
-export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather }) => {
-  const [showHourly, setShowHourly] = useState<boolean>(false);
+export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, updatedAt, isOffline }) => {
+  const [showHourly, setShowHourly] = useState<boolean>(true);
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
 
   const getWeatherIcon = (type: DayWeather['iconType'], className = 'w-7 h-7') => {
     switch (type) {
@@ -94,11 +99,25 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather }) => {
         </button>
       </div>
 
+      {/* Güncelleme durumu */}
+      <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+        <span
+          className={`inline-block w-1.5 h-1.5 rounded-full ${
+            updatedLabel && !isOffline ? 'bg-emerald-400' : 'bg-amber-400'
+          }`}
+        />
+        {updatedLabel
+          ? isOffline
+            ? `Çevrimdışı: son güncelleme ${updatedLabel}`
+            : `Güncel tahmin (${updatedLabel})`
+          : 'Henüz güncellenmedi: örnek veri. İnternete bağlanınca güncellenir.'}
+      </div>
+
       {/* Hourly Forecast Scroller */}
       {showHourly && (
         <div className="pt-2 border-t border-white/10">
           <div className="text-[11px] font-semibold text-slate-400 mb-2">
-            Saat Saat Hava Durumu:
+            Saat saat hava durumu
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             {weather.hourly.map((h, idx) => (

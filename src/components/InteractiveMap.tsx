@@ -665,10 +665,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 href={placeUrl(selectedPopupStop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm whitespace-nowrap"
+                aria-label="Google Haritalar"
+                title="Google Haritalar"
+                className="w-11 h-11 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-sm"
               >
-                <MapPin className="w-3.5 h-3.5" />
-                <span>Google Haritalar</span>
+                <MapPin className="w-5 h-5" />
               </a>
             </div>
           </div>
