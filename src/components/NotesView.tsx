@@ -1,7 +1,60 @@
 import React, { useState } from 'react';
-import { Umbrella, Shield, Ship, CloudSun, StickyNote, Save } from 'lucide-react';
+import {
+  Umbrella,
+  Shield,
+  Ship,
+  StickyNote,
+  Save,
+  Clock,
+  Ticket,
+  Hourglass,
+  Star,
+  Lightbulb,
+  Train,
+  Bus,
+  Sailboat,
+  MapPin,
+  Map as MapIcon,
+  Footprints,
+  Crosshair,
+  Info,
+  Coffee,
+  Utensils,
+  Camera,
+  Landmark,
+  Sparkles,
+  Check,
+  Heart,
+  Route as RouteIcon,
+} from 'lucide-react';
 import { DAYS_INFO } from '../data/itineraryData';
 import { getCustomNotes, saveStopNote } from '../utils/storage';
+
+const ICON_LEGEND: { Icon: React.ComponentType<{ className?: string }>; label: string }[] = [
+  { Icon: Clock, label: 'Saat / çalışma saatleri' },
+  { Icon: Ticket, label: 'Fiyat / bilet' },
+  { Icon: Hourglass, label: 'Önerilen süre' },
+  { Icon: Umbrella, label: 'Yağmura uygun' },
+  { Icon: Star, label: 'En iyi zaman' },
+  { Icon: Lightbulb, label: 'İpucu' },
+  { Icon: Info, label: 'Hızlı bilgi (dokununca açılır)' },
+  { Icon: Train, label: 'Tren' },
+  { Icon: Ship, label: 'Vapur' },
+  { Icon: Bus, label: 'Otobüs / tramvay · toplu taşıma' },
+  { Icon: Sailboat, label: 'Traghetto (gondol geçişi)' },
+  { Icon: MapPin, label: 'Google Haritalar’da aç' },
+  { Icon: MapIcon, label: 'Çevrimdışı harita (uygulama içi)' },
+  { Icon: Footprints, label: 'Yürüyerek yol tarifi / yürüyüş' },
+  { Icon: Crosshair, label: 'Koordinatla aç · konumumu göster' },
+  { Icon: RouteIcon, label: 'Alternatif rota' },
+  { Icon: Coffee, label: 'Kahve' },
+  { Icon: Utensils, label: 'Yemek' },
+  { Icon: Camera, label: 'Fotoğraf noktası' },
+  { Icon: Landmark, label: 'Gezi / tarih' },
+  { Icon: Sparkles, label: 'Alışveriş' },
+  { Icon: Check, label: 'Ziyaret edildi' },
+  { Icon: Heart, label: 'Favori' },
+];
 
 // Gün bazlı stratejiler ve kişisel notlar. Eski ana sayfa yazıları buraya taşındı.
 export const NotesView: React.FC = () => {
@@ -21,6 +74,23 @@ export const NotesView: React.FC = () => {
         <h2 className="text-lg font-bold font-serif-heading text-slate-900">Notlar</h2>
       </div>
 
+      <details className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <summary className="text-sm font-bold text-slate-900 cursor-pointer min-h-[32px] flex items-center">
+          İkon sözlüğü
+        </summary>
+        <div className="h-3" />
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+          {ICON_LEGEND.map(({ Icon, label }) => (
+            <li key={label} className="flex items-center gap-2.5 text-xs text-slate-700">
+              <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4" />
+              </span>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </details>
+
       {DAYS_INFO.map((day) => {
         const key = `day-note-${day.dayNumber}`;
         return (
@@ -36,12 +106,6 @@ export const NotesView: React.FC = () => {
             </header>
 
             <div className="space-y-2 text-xs text-slate-800">
-              <div className="flex items-start gap-2">
-                <CloudSun className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p>
-                  <strong>{day.weatherTitle}.</strong> {day.weatherDescription}
-                </p>
-              </div>
               <div className="flex items-start gap-2">
                 <Umbrella className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                 <p>

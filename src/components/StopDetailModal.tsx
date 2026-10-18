@@ -29,6 +29,7 @@ import {
   Bus,
   Crosshair,
   Route as RouteIcon,
+  Map as MapIcon,
 } from 'lucide-react';
 import { ItineraryStop } from '../types';
 import { saveStopNote, getCustomNotes } from '../utils/storage';
@@ -232,55 +233,57 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
 
         {/* Scrollable Body Content */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 text-slate-800">
-          {/* Eylemler: iki ana harita + üç yardımcı bağlantı + ziyaret durumu */}
+          {/* Eylemler: yalnızca ikonlar (anlamları Notlar > İkon sözlüğü) */}
           <div className="space-y-2.5">
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-5 gap-2">
               <a
                 href={placeUrl(stop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[52px] rounded-xl bg-slate-900 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-md shadow-slate-900/10"
+                aria-label="Google Haritalar"
+                title="Google Haritalar"
+                className="h-14 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
               >
-                <ExternalLink className="w-4 h-4 text-amber-400" />
-                <span>Google Haritalar</span>
+                <MapPin className="w-6 h-6 text-amber-400" />
               </a>
               <button
                 type="button"
                 onClick={() => onShowOnMap(stop)}
-                className="min-h-[52px] rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer"
+                aria-label="Çevrimdışı harita"
+                title="Çevrimdışı harita"
+                className="h-14 rounded-xl bg-white border border-slate-300 text-slate-900 flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
               >
-                <MapPin className="w-4 h-4 text-amber-700" />
-                <span>Çevrimdışı harita</span>
+                <MapIcon className="w-6 h-6 text-amber-700" />
               </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
               <a
                 href={directionsUrl(stop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+                aria-label="Yürüyerek yol tarifi"
+                title="Yürüyerek yol tarifi"
+                className="h-14 rounded-xl border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
               >
-                <Footprints className="w-4 h-4 text-amber-700" />
-                Yürüyerek
+                <Footprints className="w-6 h-6 text-amber-700" />
               </a>
               <a
                 href={transitDirectionsUrl(stop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+                aria-label="Toplu taşıma ile yol tarifi"
+                title="Toplu taşıma ile yol tarifi"
+                className="h-14 rounded-xl border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
               >
-                <Bus className="w-4 h-4 text-sky-700" />
-                Toplu taşıma
+                <Bus className="w-6 h-6 text-sky-700" />
               </a>
               <a
                 href={coordUrl(stop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+                aria-label="Koordinatla aç"
+                title="Koordinatla aç"
+                className="h-14 rounded-xl border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
               >
-                <Crosshair className="w-4 h-4 text-slate-600" />
-                Koordinat
+                <Crosshair className="w-6 h-6 text-slate-600" />
               </a>
             </div>
 
@@ -536,11 +539,8 @@ function PlaceInfoSection({ details }: { details: import('../data/placeDetails')
         {facts
           .filter((f) => f.value)
           .map(({ key, label, value, Icon }) => (
-            <div key={key} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                <Icon className="w-3.5 h-3.5 text-amber-700" />
-                {label}
-              </div>
+            <div key={key} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-start gap-2" title={label}>
+              <Icon className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-label={label} />
               <div className="text-slate-800 leading-relaxed">{value}</div>
             </div>
           ))}
@@ -588,8 +588,7 @@ function AccessSection({ stop, prevStop }: { stop: ItineraryStop; prevStop: Itin
         <div className="flex items-start gap-2">
           <Footprints className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <span>
-            <strong>Yürüyerek:</strong> önceki duraktan ({prevStop.locationName}) ≈ {walk.meters} m,
-            ≈ {walk.minutes} dk. Kuş uçuşundan hesaplanmış tahmindir; sokak düzenine göre değişir.
+            {prevStop.locationName} → ≈ {walk.meters} m, ≈ {walk.minutes} dk (kuş uçuşundan tahmin; sokak düzenine göre değişir).
           </span>
         </div>
       )}
@@ -597,7 +596,7 @@ function AccessSection({ stop, prevStop }: { stop: ItineraryStop; prevStop: Itin
         <div className="flex items-start gap-2">
           <Bus className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
           <span>
-            <strong>Alternatif ulaşım:</strong> {info.alt}
+            {info.alt}
           </span>
         </div>
       )}
@@ -605,7 +604,7 @@ function AccessSection({ stop, prevStop }: { stop: ItineraryStop; prevStop: Itin
         <div className="flex items-start gap-2">
           <RouteIcon className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
           <span>
-            <strong>Alternatif rota:</strong> {info.route}
+            {info.route}
           </span>
         </div>
       )}

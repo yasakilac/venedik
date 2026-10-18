@@ -21,6 +21,7 @@ import { WeatherWidget } from './components/WeatherWidget';
 import { TransitHubView } from './components/TransitHubView';
 import { IOSInstallModal } from './components/IOSInstallModal';
 import { NotesView } from './components/NotesView';
+import { LiveWeather, loadCachedWeather, refreshWeather, mergeWeather } from './utils/weather';
 import {
   CloudRain,
   Sun,
@@ -51,6 +52,7 @@ export default function App() {
   // Modals & Panels
   const [activeDetailStop, setActiveDetailStop] = useState<ItineraryStop | null>(null);
   const [focusStopId, setFocusStopId] = useState<string | null>(null);
+  const [liveWeather, setLiveWeather] = useState<LiveWeather | null>(() => loadCachedWeather());
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [isIOSModalOpen, setIsIOSModalOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
@@ -59,13 +61,25 @@ export default function App() {
     setCompletedIds(getCompletedStops());
     setFavoriteIds(getFavoriteStops());
 
-    const handleOnline = () => setIsOffline(false);
+    const updateWeather = () => {
+      refreshWeather().then((w) => {
+        if (w) setLiveWeather(w);
+      });
+    };
+    updateWeather();
+    const weatherTimer = setInterval(updateWeather, 20 * 60 * 1000);
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      updateWeather();
+    };
     const handleOffline = () => setIsOffline(true);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      clearInterval(weatherTimer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -207,7 +221,7 @@ export default function App() {
                         isSelected ? 'text-amber-300' : 'text-slate-500'
                       }`}
                     >
-                      {day.dayName} · {day.weather.tempHigh}°
+                      {day.dayName} · {mergeWeather(day.weather, liveWeather).tempHigh}°
                     </div>
                   </button>
                 );
@@ -243,7 +257,11 @@ export default function App() {
               </div>
 
               {/* Dedicated Weather Card with Icons & Hourly Scroller */}
-              <WeatherWidget weather={currentDayInfo.weather} />
+              <WeatherWidget
+                weather={mergeWeather(currentDayInfo.weather, liveWeather)}
+                updatedAt={liveWeather?.days?.[selectedDayNumber] ? liveWeather.updatedAt : null}
+                isOffline={isOffline}
+              />
 
               {/* Day 1 Pass Start or Day 3 20:45 Alert Strip */}
               {selectedDayNumber === 1 && (
