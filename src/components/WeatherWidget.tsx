@@ -6,7 +6,6 @@ import {
   Cloud,
   Droplets,
   Wind,
-  Umbrella,
   Shield,
   ChevronDown,
   ChevronUp,
@@ -93,14 +92,6 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather }) => {
           <span>Saatlik</span>
           {showHourly ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
-      </div>
-
-      {/* Portici & Rain Strategy Alert */}
-      <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-200 flex items-start gap-2">
-        <Umbrella className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <p className="leading-relaxed">
-          <strong className="text-amber-300">Gezi Stratejisi:</strong> {weather.rainStrategy}
-        </p>
       </div>
 
       {/* Hourly Forecast Scroller */}

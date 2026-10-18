@@ -6,20 +6,26 @@ import {
   Camera,
   Landmark,
   Ship,
+  Train,
+  Bus,
+  Sailboat,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   Clock,
   Sparkles,
   MapPin,
-  ChevronDown,
+  Map as MapIcon,
   Ticket,
   Hourglass,
   Umbrella,
   Lightbulb,
   Star,
+  ArrowRight,
 } from 'lucide-react';
 import { ItineraryStop } from '../types';
 import { PLACE_DETAILS } from '../data/placeDetails';
+import { ROUTE_LABELS, stopModes, TravelMode } from '../data/stopMeta';
 import { placeUrl } from '../utils/maps';
 
 interface StopCardProps {
@@ -27,18 +33,26 @@ interface StopCardProps {
   isCompleted: boolean;
   onToggleComplete: (e: React.MouseEvent) => void;
   onClickCard: () => void;
+  onShowOnMap: () => void;
 }
 
 const CATEGORY_CONFIG: Record<
   string,
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
-  coffee: { label: 'Kahve & Latte', icon: Coffee, color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  food: { label: 'Yemek & Cicchetti', icon: Utensils, color: 'text-rose-700 bg-rose-50 border-rose-200' },
-  photo: { label: 'Fotoğraf Noktası', icon: Camera, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-  sight: { label: 'Tarih & Doğa', icon: Landmark, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  transport: { label: 'Ulaşım & Vapur', icon: Ship, color: 'text-sky-700 bg-sky-50 border-sky-200' },
-  shopping: { label: 'Ekipman & Alışveriş', icon: Sparkles, color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  coffee: { label: 'Kahve', icon: Coffee, color: 'text-amber-700 bg-amber-50 border-amber-200' },
+  food: { label: 'Yemek', icon: Utensils, color: 'text-rose-700 bg-rose-50 border-rose-200' },
+  photo: { label: 'Fotoğraf', icon: Camera, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  sight: { label: 'Gezi', icon: Landmark, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  transport: { label: 'Ulaşım', icon: Ship, color: 'text-sky-700 bg-sky-50 border-sky-200' },
+  shopping: { label: 'Alışveriş', icon: Sparkles, color: 'text-purple-700 bg-purple-50 border-purple-200' },
+};
+
+const MODE_ICON: Record<TravelMode, { Icon: React.ComponentType<{ className?: string }>; label: string }> = {
+  train: { Icon: Train, label: 'Tren' },
+  vaporetto: { Icon: Ship, label: 'Vapur' },
+  bus: { Icon: Bus, label: 'Otobüs / tramvay' },
+  gondola: { Icon: Sailboat, label: 'Traghetto' },
 };
 
 export const StopCard: React.FC<StopCardProps> = ({
@@ -46,10 +60,13 @@ export const StopCard: React.FC<StopCardProps> = ({
   isCompleted,
   onToggleComplete,
   onClickCard,
+  onShowOnMap,
 }) => {
   const config = CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.sight;
   const CategoryIcon = config.icon;
   const details = PLACE_DETAILS[stop.id];
+  const route = ROUTE_LABELS[stop.id];
+  const modes = stopModes(stop);
   const [expanded, setExpanded] = React.useState(false);
 
   return (
@@ -62,7 +79,6 @@ export const StopCard: React.FC<StopCardProps> = ({
       }`}
     >
       <div className="p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
-        {/* Checkbox Touch Target >= 44x44 px */}
         <button
           type="button"
           onClick={onToggleComplete}
@@ -80,52 +96,44 @@ export const StopCard: React.FC<StopCardProps> = ({
           </div>
         </button>
 
-        {/* Main Content Area */}
         <div className="flex-1 min-w-0">
-          {/* Metadata Row (Unboxed typography - Zero-Pill) */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mb-1">
-            <span className="flex items-center gap-1 font-medium text-slate-700">
+          {/* Üst satır: yalnızca saat · araç simgeleri · fiyat */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+            <span className="flex items-center gap-1 font-semibold text-slate-800 tabular-nums">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               {stop.timeRange}
             </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
-            <span className="text-slate-600 font-medium">{config.label}</span>
-            {stop.estimatedCost && (
-              <>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span className="text-slate-600">{stop.estimatedCost}</span>
-              </>
+            {modes.length > 0 && (
+              <span className="flex items-center gap-1 text-sky-700" aria-label={modes.map((m) => MODE_ICON[m].label).join(' + ')}>
+                {modes.map((m) => {
+                  const { Icon, label } = MODE_ICON[m];
+                  return <Icon key={m} className="w-4 h-4" aria-label={label} />;
+                })}
+              </span>
             )}
+            {stop.estimatedCost && <span className="font-medium text-slate-700">{stop.estimatedCost}</span>}
           </div>
 
-          {/* Title */}
+          {/* Başlık: ulaşımda "nereden → nereye", diğerlerinde mekan adı */}
           <h3
-            className={`text-base sm:text-lg font-semibold tracking-tight leading-snug transition-colors ${
-              isCompleted
-                ? 'line-through text-slate-500'
-                : 'text-slate-900 group-hover:text-amber-800'
+            className={`mt-1 text-base sm:text-lg font-semibold tracking-tight leading-snug transition-colors ${
+              isCompleted ? 'line-through text-slate-500' : 'text-slate-900 group-hover:text-amber-800'
             }`}
           >
-            {stop.title}
+            {route ? (
+              <span className="inline-flex flex-wrap items-center gap-x-1.5">
+                <span>{route.from}</span>
+                <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>{route.to}</span>
+              </span>
+            ) : (
+              stop.title
+            )}
           </h3>
 
-          {/* Subtitle / Teaser */}
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-            {stop.subtitle}
-          </p>
-
-          {/* Transit line badge if transit stop */}
-          {stop.transitInfo && (
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-100 max-w-full">
-              <Ship className="w-3 h-3 text-sky-600" />
-              <span>{stop.transitInfo.lineCode.split('(')[0].trim()}</span>
-              <span className="text-sky-500 font-normal shrink-0 whitespace-nowrap">· {stop.transitInfo.travelDurationMin} dk</span>
-            </div>
-          )}
-
-          {/* İkonlu hızlı bilgi şeridi (tıklayınca açılır) */}
+          {/* İkonlu etiketler (tıklayınca açılan hızlı bilgi) */}
           {details && (
-            <div className="mt-3">
+            <div className="mt-2.5">
               <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border ${config.color}`}>
                   <CategoryIcon className="w-3.5 h-3.5" />
@@ -159,7 +167,7 @@ export const StopCard: React.FC<StopCardProps> = ({
                   e.stopPropagation();
                   setExpanded((v) => !v);
                 }}
-                className="mt-2 inline-flex items-center gap-1 min-h-[36px] text-xs font-semibold text-amber-800 hover:text-amber-950"
+                className="mt-1.5 inline-flex items-center gap-1 min-h-[36px] text-xs font-semibold text-amber-800 hover:text-amber-950"
               >
                 <span>{expanded ? 'Bilgiyi gizle' : 'Hızlı bilgi'}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -206,31 +214,31 @@ export const StopCard: React.FC<StopCardProps> = ({
             </div>
           )}
 
-          {/* Location & Quick Action Row */}
-          <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 flex items-center gap-1 truncate max-w-[200px] sm:max-w-[280px]">
-              <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-              <span className="truncate">{stop.locationName}</span>
-            </span>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <a
-                href={placeUrl(stop)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                title="Google Haritalar'da aç"
-                className="min-h-[44px] px-2 rounded-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-1 text-[11px] font-semibold"
-              >
-                <MapPin className="w-4 h-4" />
-                <span>Google Haritalar</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <div className="text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all">
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </div>
+          {/* Harita bağlantıları: Google Haritalar + uygulama içi çevrimdışı harita */}
+          <div className="mt-2 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-[11px] font-semibold">
+            <a
+              href={placeUrl(stop)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="min-h-[40px] px-2.5 rounded-lg bg-blue-50 text-blue-800 hover:bg-blue-100 flex items-center gap-1"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>Google Haritalar</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowOnMap();
+              }}
+              className="min-h-[40px] px-2.5 rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 flex items-center gap-1 cursor-pointer"
+            >
+              <MapIcon className="w-4 h-4" />
+              <span>Çevrimdışı harita</span>
+            </button>
+            <ChevronRight className="w-4 h-4 text-slate-400 ml-auto" />
           </div>
         </div>
       </div>
