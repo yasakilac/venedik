@@ -25,12 +25,17 @@ import {
   BookOpen,
   Sparkles,
   ChevronDown,
+  Footprints,
+  Bus,
+  Crosshair,
+  Route as RouteIcon,
 } from 'lucide-react';
 import { ItineraryStop } from '../types';
 import { saveStopNote, getCustomNotes } from '../utils/storage';
 import { TransitTimetableCard } from './TransitTimetableCard';
 import { PLACE_DETAILS } from '../data/placeDetails';
-import { placeUrl, coordUrl, directionsUrl } from '../utils/maps';
+import { placeUrl, coordUrl, directionsUrl, transitDirectionsUrl } from '../utils/maps';
+import { ACCESS_INFO, estimateWalk, stopModes } from '../data/stopMeta';
 
 interface StopDetailModalProps {
   stop: ItineraryStop | null;
@@ -41,6 +46,7 @@ interface StopDetailModalProps {
   onToggleFavorite: () => void;
   onSelectStop: (stop: ItineraryStop) => void;
   allStopsInDay: ItineraryStop[];
+  onShowOnMap: (stop: ItineraryStop) => void;
 }
 
 export const StopDetailModal: React.FC<StopDetailModalProps> = ({
@@ -52,6 +58,7 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
   onToggleFavorite,
   onSelectStop,
   allStopsInDay,
+  onShowOnMap,
 }) => {
   const [userNote, setUserNote] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
@@ -155,9 +162,8 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
                 <ChevronLeft className="w-5 h-5" />
                 <span>Geri</span>
               </button>
-              <span>{stop.day}. Gün</span>
-              <span>·</span>
-              <span className="flex items-center gap-1">
+              <span className="whitespace-nowrap">{stop.day}. Gün</span>
+              <span className="flex items-center gap-1 whitespace-nowrap normal-case">
                 <Clock className="w-3.5 h-3.5" />
                 {stop.timeRange}
               </span>
@@ -226,22 +232,62 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
 
         {/* Scrollable Body Content */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 text-slate-800">
-          {/* Quick Primary Actions: Google Maps & Visited Toggle */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <a
-              href={placeUrl(stop)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-12 rounded-xl bg-slate-900 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-md shadow-slate-900/10 cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4 text-amber-400" />
-              <span>Google Haritalar’da Aç</span>
-            </a>
+          {/* Eylemler: iki ana harita + üç yardımcı bağlantı + ziyaret durumu */}
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              <a
+                href={placeUrl(stop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[52px] rounded-xl bg-slate-900 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-md shadow-slate-900/10"
+              >
+                <ExternalLink className="w-4 h-4 text-amber-400" />
+                <span>Google Haritalar</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => onShowOnMap(stop)}
+                className="min-h-[52px] rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <MapPin className="w-4 h-4 text-amber-700" />
+                <span>Çevrimdışı harita</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <a
+                href={directionsUrl(stop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+              >
+                <Footprints className="w-4 h-4 text-amber-700" />
+                Yürüyerek
+              </a>
+              <a
+                href={transitDirectionsUrl(stop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+              >
+                <Bus className="w-4 h-4 text-sky-700" />
+                Toplu taşıma
+              </a>
+              <a
+                href={coordUrl(stop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[44px] px-1 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50"
+              >
+                <Crosshair className="w-4 h-4 text-slate-600" />
+                Koordinat
+              </a>
+            </div>
 
             <button
               type="button"
               onClick={onToggleComplete}
-              className={`h-12 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+              className={`w-full min-h-[44px] rounded-xl font-medium text-sm flex items-center justify-center gap-2 border transition-all cursor-pointer ${
                 isCompleted
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -249,37 +295,17 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
             >
               <div
                 className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  isCompleted
-                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                    : 'border-slate-400'
+                  isCompleted ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-400'
                 }`}
               >
                 {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
               </div>
-              <span>{isCompleted ? 'Ziyaret Edildi Olarak İşaretlendi' : 'Ziyaret Edildi Olarak İşaretle'}</span>
+              <span>{isCompleted ? 'Ziyaret edildi' : 'Ziyaret edildi olarak işaretle'}</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 -mt-3">
-            <a
-              href={directionsUrl(stop)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-slate-50"
-            >
-              <Compass className="w-4 h-4 text-amber-700" />
-              Yürüyerek yol tarifi
-            </a>
-            <a
-              href={coordUrl(stop)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-slate-50"
-            >
-              <MapPin className="w-4 h-4 text-amber-700" />
-              Koordinatla aç
-            </a>
-          </div>
+          {/* Buraya nasıl gidilir? */}
+          <AccessSection stop={stop} prevStop={prevStop} />
 
           {/* Mekan Bilgileri: ikonlu özet + açılır bölümler */}
           {PLACE_DETAILS[stop.id] && (
@@ -423,12 +449,12 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Önceki:</span>
-            <span className="truncate max-w-[110px] sm:max-w-[150px]">
+            <span className="truncate max-w-[90px] sm:max-w-[150px]">
               {prevStop ? prevStop.title : 'İlk Durak'}
             </span>
           </button>
 
-          <span className="text-xs text-slate-600 font-medium">
+          <span className="text-xs text-slate-600 font-medium whitespace-nowrap shrink-0">
             {currentIndex + 1} / {allStopsInDay.length}
           </span>
 
@@ -442,7 +468,7 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
                 : 'text-slate-300 cursor-not-allowed'
             }`}
           >
-            <span className="truncate max-w-[110px] sm:max-w-[150px]">
+            <span className="truncate max-w-[90px] sm:max-w-[150px]">
               {nextStop ? nextStop.title : 'Son Durak'}
             </span>
             <span className="hidden sm:inline">:Sonraki</span>
@@ -541,6 +567,48 @@ function PlaceInfoSection({ details }: { details: import('../data/placeDetails')
       <p className="text-[11px] text-slate-500 leading-relaxed">
         Saat ve fiyatlar yaklaşık değerlerdir ve mevsime göre değişir; gitmeden resmi siteden teyit edin.
       </p>
+    </div>
+  );
+}
+
+
+function AccessSection({ stop, prevStop }: { stop: ItineraryStop; prevStop: ItineraryStop | null }) {
+  const info = ACCESS_INFO[stop.id];
+  const byTransit = stopModes(stop).length > 0;
+  const walk = prevStop && !byTransit ? estimateWalk(prevStop, stop) : null;
+  if (!info && !walk) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2.5 text-xs text-slate-800">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <RouteIcon className="w-4 h-4 text-amber-700" />
+        Buraya nasıl gidilir?
+      </div>
+      {walk && prevStop && (
+        <div className="flex items-start gap-2">
+          <Footprints className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <span>
+            <strong>Yürüyerek:</strong> önceki duraktan ({prevStop.locationName}) ≈ {walk.meters} m,
+            ≈ {walk.minutes} dk. Kuş uçuşundan hesaplanmış tahmindir; sokak düzenine göre değişir.
+          </span>
+        </div>
+      )}
+      {info?.alt && (
+        <div className="flex items-start gap-2">
+          <Bus className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+          <span>
+            <strong>Alternatif ulaşım:</strong> {info.alt}
+          </span>
+        </div>
+      )}
+      {info?.route && (
+        <div className="flex items-start gap-2">
+          <RouteIcon className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+          <span>
+            <strong>Alternatif rota:</strong> {info.route}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

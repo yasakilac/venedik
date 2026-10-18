@@ -21,3 +21,9 @@ export function directionsUrl(stop: ItineraryStop): string {
   const [lat, lng] = stop.coordinates;
   return `${BASE}/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 }
+
+// Toplu taşıma ile yol tarifi (alternatif ulaşım).
+export function transitDirectionsUrl(stop: ItineraryStop): string {
+  const [lat, lng] = stop.coordinates;
+  return `${BASE}/dir/?api=1&destination=${lat},${lng}&travelmode=transit`;
+}

@@ -8,6 +8,7 @@ import {
   CacheProgress,
 } from '../utils/tileCache';
 import { placeUrl } from '../utils/maps';
+import { getCachedRoute, fetchWalkRoute, isWalkLeg, prefetchAllWalkRoutes } from '../utils/walkRoutes';
 import {
   MapPin,
   Navigation,
@@ -31,6 +32,8 @@ interface InteractiveMapProps {
   onSelectDay: (day: number) => void;
   onOpenStopDetail: (stop: ItineraryStop) => void;
   completedStopIds: string[];
+  focusStopId?: string | null;
+  onFocusHandled?: () => void;
 }
 
 const REGION_BOUNDS = {
@@ -53,11 +56,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   onSelectDay,
   onOpenStopDetail,
   completedStopIds,
+  focusStopId,
+  onFocusHandled,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const [routeVersion, setRouteVersion] = useState<number>(0);
+  const lastFitKeyRef = useRef<string>('');
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const accuracyCircleRef = useRef<L.Circle | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -88,6 +95,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       const map = L.map(mapContainerRef.current, {
         center: [45.4371, 12.3326],
         zoom: 13,
+        minZoom: 10,
         zoomControl: false,
         attributionControl: true,
       });
@@ -153,6 +161,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       const tileLayer = new (OfflineCachedTileLayer as any)(currentTileUrl, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
+        maxNativeZoom: 17,
+        minZoom: 10,
         crossOrigin: true,
       }).addTo(map);
 
@@ -187,9 +197,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     markersGroup.clearLayers();
 
-    if (routePolylineRef.current) {
-      map.removeLayer(routePolylineRef.current);
-      routePolylineRef.current = null;
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
     }
 
     const bounds = L.latLngBounds([]);
@@ -237,22 +247,63 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       bounds.extend(stop.coordinates);
     });
 
-    // Draw route line connecting the day's stops
-    if (polylineCoords.length > 1 && selectedDay !== 0) {
+    // Rota çizgileri: yürüyüş ayakları sokak sokak (indirilmişse), vapur/tren/otobüs ayakları kesik hat
+    if (filteredStops.length > 1 && selectedDay !== 0) {
       const routeColor = DAY_COLORS[selectedDay] || '#f59e0b';
-      const poly = L.polyline(polylineCoords, {
-        color: routeColor,
-        weight: 4,
-        opacity: 0.8,
-        dashArray: '8, 8',
-      }).addTo(map);
-      routePolylineRef.current = poly;
+      const layer = L.layerGroup().addTo(map);
+      routeLayerRef.current = layer;
+
+      for (let i = 0; i < filteredStops.length - 1; i++) {
+        const from = filteredStops[i];
+        const to = filteredStops[i + 1];
+        const straight: [number, number][] = [from.coordinates, to.coordinates];
+
+        if (isWalkLeg(from, to)) {
+          const cached = getCachedRoute(from.coordinates, to.coordinates);
+          if (cached) {
+            L.polyline(cached.coords, { color: routeColor, weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' })
+              .bindTooltip(`Yürüyüş ≈ ${Math.max(1, Math.round(cached.seconds / 60))} dk · ${cached.meters} m`, { sticky: true })
+              .addTo(layer);
+          } else {
+            L.polyline(straight, { color: '#64748b', weight: 3, opacity: 0.7, dashArray: '4, 8' })
+              .bindTooltip('Yürüyüş rotası indirilmedi (düz hat)', { sticky: true })
+              .addTo(layer);
+            // Çevrimiçiyken arka planda rotayı çek ve yeniden çiz
+            fetchWalkRoute(from.coordinates, to.coordinates).then((r) => {
+              if (r) setRouteVersion((v) => v + 1);
+            });
+          }
+        } else {
+          L.polyline(straight, { color: '#0284c7', weight: 3, opacity: 0.8, dashArray: '10, 10' })
+            .bindTooltip('Vapur / tren / otobüs ayağı (kuş uçuşu çizgi)', { sticky: true })
+            .addTo(layer);
+        }
+      }
     }
 
-    if (filteredStops.length > 0 && bounds.isValid()) {
+    // Yalnızca gün/durak listesi değişince sığdır (rota yüklendikçe görünümü bozma)
+    const fitKey = `${selectedDay}:${filteredStops.map((st) => st.id).join(',')}`;
+    if (filteredStops.length > 0 && bounds.isValid() && lastFitKeyRef.current !== fitKey) {
+      lastFitKeyRef.current = fitKey;
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
     }
-  }, [filteredStops, selectedDay, completedStopIds]);
+  }, [filteredStops, selectedDay, completedStopIds, routeVersion]);
+
+  // Karttaki "Çevrimdışı harita" bağlantısından gelen odaklanma
+  useEffect(() => {
+    if (!focusStopId || !mapInstanceRef.current) return;
+    const stop = stops.find((st) => st.id === focusStopId);
+    if (stop) {
+      setSelectedPopupStop(stop);
+      // Gün sığdırma (fitBounds) bittikten sonra durağa odaklan
+      const map = mapInstanceRef.current;
+      setTimeout(() => {
+        map.invalidateSize();
+        map.setView(stop.coordinates, 17, { animate: false });
+      }, 450);
+    }
+    onFocusHandled?.();
+  }, [focusStopId, stops, onFocusHandled]);
 
   // GPS Locate User Feature (Works via Satellite even with no data!)
   // --- Canlı konum + yön oku ---
@@ -412,7 +463,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       setIsCached(true);
       setCachedCount(result.totalCached);
-      setStatusMessage(`Harita başarıyla indirildi! ${result.totalCached} sokak karosu artık internetsiz çalışır.`);
+
+      setDownloadProgress({ total: 0, completed: 0, percent: 100, statusText: 'Yürüyüş rotaları indiriliyor...' });
+      const routes = await prefetchAllWalkRoutes(stops, (done, total) =>
+        setDownloadProgress({ total, completed: done, percent: Math.round((done / total) * 100), statusText: `Yürüyüş rotası ${done} / ${total}` })
+      );
+      setRouteVersion((v) => v + 1);
+      setStatusMessage(
+        `Harita indirildi (${result.totalCached} karo). Yürüyüş rotaları: ${routes.ok}/${routes.total}` +
+          (routes.ok < routes.total ? ' — eksikler düz kesik çizgi olarak görünür.' : '.')
+      );
     } catch (e: any) {
       console.error('Tile download error', e);
       setStatusMessage('İndirme sırasında bir sorun oluştu. Lütfen bağlantınızı kontrol edin.');
@@ -605,7 +665,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 href={placeUrl(selectedPopupStop)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm"
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm whitespace-nowrap"
               >
                 <MapPin className="w-3.5 h-3.5" />
                 <span>Google Haritalar</span>

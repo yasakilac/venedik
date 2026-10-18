@@ -2,8 +2,8 @@ import React from 'react';
 import { Compass, MapPin, Bell, Wallet, Wifi, WifiOff, Ship } from 'lucide-react';
 
 interface HeaderProps {
-  activeTab: 'itinerary' | 'map' | 'transit' | 'budget';
-  onSelectTab: (tab: 'itinerary' | 'map' | 'transit' | 'budget') => void;
+  activeTab: 'itinerary' | 'map' | 'transit' | 'budget' | 'notes';
+  onSelectTab: (tab: 'itinerary' | 'map' | 'transit' | 'budget' | 'notes') => void;
   isOffline: boolean;
   onOpenNotifications: () => void;
   hasUnreadAlerts: boolean;
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 2: Clean single-line text navigation links */}
-        <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none">
+        <nav className="hidden sm:flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none">
           <button
             onClick={() => onSelectTab('itinerary')}
             className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
@@ -80,6 +80,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Wallet className="w-3.5 h-3.5" />
             Bütçe & Pass
+          </button>
+          <button
+            onClick={() => onSelectTab('notes')}
+            className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              activeTab === 'notes'
+                ? 'bg-slate-800 text-amber-400 font-semibold shadow-inner'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            Notlar
           </button>
         </nav>
 

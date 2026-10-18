@@ -20,6 +20,7 @@ import { NotificationModal } from './components/NotificationModal';
 import { WeatherWidget } from './components/WeatherWidget';
 import { TransitHubView } from './components/TransitHubView';
 import { IOSInstallModal } from './components/IOSInstallModal';
+import { NotesView } from './components/NotesView';
 import {
   CloudRain,
   Sun,
@@ -34,10 +35,11 @@ import {
   Ship,
   Sparkles,
   WifiOff,
+  StickyNote,
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'map' | 'transit' | 'budget'>('itinerary');
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'map' | 'transit' | 'budget' | 'notes'>('itinerary');
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -48,6 +50,7 @@ export default function App() {
 
   // Modals & Panels
   const [activeDetailStop, setActiveDetailStop] = useState<ItineraryStop | null>(null);
+  const [focusStopId, setFocusStopId] = useState<string | null>(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [isIOSModalOpen, setIsIOSModalOpen] = useState<boolean>(false);
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
@@ -89,6 +92,15 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  const showOnMap = (stop: ItineraryStop) => {
+    setActiveDetailStop(null);
+    if (window.history.state?.venetoDetail) window.history.back();
+    setSelectedDayNumber(stop.day);
+    setFocusStopId(stop.id);
+    setActiveTab('map');
+    window.scrollTo({ top: 0 });
+  };
 
   const handleToggleComplete = (stopId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -212,14 +224,6 @@ export default function App() {
                     <span>·</span>
                     <span>{dayStops.length} Durak</span>
                   </div>
-
-                  <h1 className="text-lg sm:text-2xl font-bold font-serif-heading text-slate-900 tracking-tight leading-tight">
-                    {currentDayInfo.dayNumber}. Gün: {currentDayInfo.title}
-                  </h1>
-
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    {currentDayInfo.subtitle}
-                  </p>
                 </div>
 
                 {/* Day Progress Counter */}
@@ -305,33 +309,6 @@ export default function App() {
                   <span>Sefer Saatleri (Offline)</span>
                 </button>
               </div>
-
-              {/* Segmented Filter Controls */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-xs">
-                {[
-                  { id: 'all', label: 'Tümü' },
-                  { id: 'pending', label: 'Yapılacaklar' },
-                  { id: 'completed', label: 'Ziyaret Edilenler' },
-                  { id: 'transport', label: '🚢 Ulaşım' },
-                  { id: 'coffee', label: '☕ Kahve & Latte' },
-                  { id: 'food', label: '🍽️ Yemek & Cicchetti' },
-                  { id: 'photo', label: '📷 Fotoğraf Noktaları' },
-                  { id: 'sight', label: '🏛️ Gezi & Doğa' },
-                  { id: 'favorites', label: '❤️ Favoriler' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedCategoryFilter(item.id)}
-                    className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                      selectedCategoryFilter === item.id
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Checklist Cards List */}
@@ -344,6 +321,7 @@ export default function App() {
                     isCompleted={completedIds.includes(stop.id)}
                     onToggleComplete={(e) => handleToggleComplete(stop.id, e)}
                     onClickCard={() => openDetail(stop)}
+                    onShowOnMap={() => showOnMap(stop)}
                   />
                 ))
               ) : (
@@ -375,11 +353,15 @@ export default function App() {
             onSelectDay={setSelectedDayNumber}
             onOpenStopDetail={(stop) => openDetail(stop)}
             completedStopIds={completedIds}
+            focusStopId={focusStopId}
+            onFocusHandled={() => setFocusStopId(null)}
           />
         )}
 
         {/* ================= TAB 3: OFFLINE TRANSIT HUB ================= */}
         {activeTab === 'transit' && <TransitHubView />}
+
+        {activeTab === 'notes' && <NotesView />}
 
         {/* ================= TAB 4: BUDGET & PASS TRACKER ================= */}
         {activeTab === 'budget' && (
@@ -403,6 +385,7 @@ export default function App() {
         onToggleFavorite={() => activeDetailStop && handleToggleFavorite(activeDetailStop.id)}
         onSelectStop={(stop) => setActiveDetailStop(stop)}
         allStopsInDay={dayStops}
+        onShowOnMap={showOnMap}
       />
 
       {/* Notification Settings Modal */}
@@ -469,11 +452,13 @@ export default function App() {
 
           <button
             type="button"
-            onClick={() => setIsNotificationModalOpen(true)}
-            className="flex flex-col items-center justify-center h-full text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            onClick={() => setActiveTab('notes')}
+            className={`flex flex-col items-center justify-center h-full transition-colors cursor-pointer ${
+              activeTab === 'notes' ? 'text-amber-600 font-semibold' : 'text-slate-500'
+            }`}
           >
-            <Bell className="w-5 h-5" />
-            <span className="text-[10px] mt-1 tracking-tight">Alarmlar</span>
+            <StickyNote className="w-5 h-5" />
+            <span className="text-[10px] mt-1 tracking-tight">Notlar</span>
           </button>
         </div>
       </div>
