@@ -48,3 +48,13 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
 }
+
+
+/* Kullanıcı konumu + yön oku */
+.user-heading-marker { background: transparent; border: 0; }
+.user-heading-wrap { position: relative; width: 64px; height: 64px; }
+.user-heading-cone { position: absolute; inset: 0; transform-origin: 32px 32px; transition: transform 0.15s linear; }
+.user-heading-dot {
+  position: absolute; left: 24px; top: 24px; width: 16px; height: 16px; border-radius: 9999px;
+  background: #2563eb; border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35), 0 1px 4px rgba(0,0,0,0.4);
+}

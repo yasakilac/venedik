@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import { ItineraryStop } from '../types';
 import {
@@ -57,7 +57,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
-  const userLocationMarkerRef = useRef<L.CircleMarker | null>(null);
+  const userLocationMarkerRef = useRef<L.Marker | null>(null);
+  const accuracyCircleRef = useRef<L.Circle | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const headingRef = useRef<number | null>(null);
+  const compassActiveRef = useRef<boolean>(false);
+  const firstFixRef = useRef<boolean>(true);
+  const [isTracking, setIsTracking] = useState<boolean>(false);
 
   // Offline tile cache state
   const [isCached, setIsCached] = useState<boolean>(isTilesCacheReady());
@@ -248,48 +254,150 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   }, [filteredStops, selectedDay, completedStopIds]);
 
   // GPS Locate User Feature (Works via Satellite even with no data!)
-  const handleLocateMe = () => {
+  // --- Canlı konum + yön oku ---
+  const handleLocateMe = async () => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    if (!('geolocation' in navigator)) {
-      alert('Cihazınız konum özelliğini desteklemiyor.');
+    // Takip açıksa kapat
+    if (isTracking) {
+      stopTracking();
       return;
     }
 
-    setStatusMessage('GPS uydularından konum alınıyor...');
+    if (!('geolocation' in navigator)) {
+      setStatusMessage('Cihazınız konum özelliğini desteklemiyor.');
+      return;
+    }
 
-    navigator.geolocation.getCurrentPosition(
+    // iOS: pusula izni mutlaka kullanıcı dokunuşu içinde istenmeli
+    const DOE = (window as any).DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === 'function') {
+      try {
+        const res = await DOE.requestPermission();
+        if (res !== 'granted') {
+          setStatusMessage('Pusula izni verilmedi: konum görünür ama yön oku çalışmaz.');
+        }
+      } catch {
+        // izin penceresi açılamadı; konumla devam et
+      }
+    }
+
+    setStatusMessage('GPS uydularından konum alınıyor...');
+    setIsTracking(true);
+    firstFixRef.current = true;
+
+    window.addEventListener('deviceorientationabsolute', onOrientation as EventListener, true);
+    window.addEventListener('deviceorientation', onOrientation as EventListener, true);
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+        const { latitude, longitude, accuracy, heading } = pos.coords;
         const latlng: [number, number] = [latitude, longitude];
 
-        if (userLocationMarkerRef.current) {
-          map.removeLayer(userLocationMarkerRef.current);
+        // Pusula yoksa hareket halindeyken GPS yönünü kullan
+        if (!compassActiveRef.current && heading != null && !Number.isNaN(heading)) {
+          applyHeading(heading);
         }
 
-        const marker = L.circleMarker(latlng, {
-          radius: 9,
-          fillColor: '#2563eb',
-          color: '#ffffff',
-          weight: 3,
-          opacity: 1,
-          fillOpacity: 0.9,
-        }).addTo(map);
+        if (!userLocationMarkerRef.current) {
+          const icon = L.divIcon({
+            className: 'user-heading-marker',
+            html:
+              '<div class="user-heading-wrap">' +
+              '<svg class="user-heading-cone" viewBox="0 0 64 64" width="64" height="64">' +
+              '<defs><linearGradient id="hcone" x1="0" y1="1" x2="0" y2="0">' +
+              '<stop offset="0" stop-color="#2563eb" stop-opacity="0.55"/>' +
+              '<stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient></defs>' +
+              '<path d="M32 32 L14 2 A34 34 0 0 1 50 2 Z" fill="url(#hcone)"/>' +
+              '<path d="M32 6 L39 20 L32 17 L25 20 Z" fill="#1d4ed8" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>' +
+              '</svg>' +
+              '<div class="user-heading-dot"></div></div>',
+            iconSize: [64, 64],
+            iconAnchor: [32, 32],
+          });
+          userLocationMarkerRef.current = L.marker(latlng, {
+            icon,
+            interactive: false,
+            zIndexOffset: 2000,
+          }).addTo(map);
+          accuracyCircleRef.current = L.circle(latlng, {
+            radius: accuracy,
+            color: '#2563eb',
+            weight: 1,
+            fillColor: '#3b82f6',
+            fillOpacity: 0.12,
+            interactive: false,
+          }).addTo(map);
+          applyHeading(headingRef.current ?? 0, true);
+        } else {
+          userLocationMarkerRef.current.setLatLng(latlng);
+          accuracyCircleRef.current?.setLatLng(latlng).setRadius(accuracy);
+        }
 
-        userLocationMarkerRef.current = marker;
-        map.flyTo(latlng, 16, { duration: 1.2 });
-        setStatusMessage(`Konumunuz bulundu! (Hassasiyet: ~${Math.round(accuracy)}m)`);
-        setTimeout(() => setStatusMessage(''), 4000);
+        if (firstFixRef.current) {
+          firstFixRef.current = false;
+          map.flyTo(latlng, 16, { duration: 1.2 });
+          setStatusMessage(`Konumunuz bulundu (± ${Math.round(accuracy)} m). Ok baktığınız yönü gösterir.`);
+          setTimeout(() => setStatusMessage(''), 5000);
+        }
       },
       (err) => {
         console.warn('Geolocation error', err);
-        setStatusMessage('GPS konumu alınamadı. Lütfen konum izinlerini kontrol edin.');
-        setTimeout(() => setStatusMessage(''), 4000);
+        setStatusMessage('GPS konumu alınamadı. Safari/Ayarlar’dan konum iznini kontrol edin.');
+        setTimeout(() => setStatusMessage(''), 5000);
+        stopTracking();
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
     );
   };
+
+  const applyHeading = useCallback((deg: number, force = false) => {
+    // Basit alçak geçiren filtre (360° geçişini dikkate alarak)
+    const prev = headingRef.current;
+    let next = ((deg % 360) + 360) % 360;
+    if (prev != null && !force) {
+      const diff = ((next - prev + 540) % 360) - 180;
+      if (Math.abs(diff) < 2) return;
+      next = (prev + diff * 0.35 + 360) % 360;
+    }
+    headingRef.current = next;
+    const el = userLocationMarkerRef.current?.getElement()?.querySelector<HTMLElement>('.user-heading-cone');
+    if (el) el.style.transform = `rotate(${next}deg)`;
+  }, []);
+
+  const onOrientation = useCallback((e: DeviceOrientationEvent & { webkitCompassHeading?: number }) => {
+    let heading: number | null = null;
+    if (typeof e.webkitCompassHeading === 'number') {
+      heading = e.webkitCompassHeading; // iOS: manyetik kuzeye göre derece
+    } else if (e.absolute && e.alpha != null) {
+      heading = 360 - e.alpha; // Android: deviceorientationabsolute
+    }
+    if (heading == null || Number.isNaN(heading)) return;
+    const first = !compassActiveRef.current;
+    compassActiveRef.current = true;
+    applyHeading(heading, first);
+  }, [applyHeading]);
+
+  const stopTracking = useCallback(() => {
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    window.removeEventListener('deviceorientationabsolute', onOrientation as EventListener, true);
+    window.removeEventListener('deviceorientation', onOrientation as EventListener, true);
+    const map = mapInstanceRef.current;
+    if (map && userLocationMarkerRef.current) map.removeLayer(userLocationMarkerRef.current);
+    if (map && accuracyCircleRef.current) map.removeLayer(accuracyCircleRef.current);
+    userLocationMarkerRef.current = null;
+    accuracyCircleRef.current = null;
+    compassActiveRef.current = false;
+    headingRef.current = null;
+    setIsTracking(false);
+  }, [onOrientation]);
+
+  // Ekran değişince konum takibini bırak (pil)
+  useEffect(() => () => stopTracking(), [stopTracking]);
 
   // Download all OpenStreetMap tiles for offline use
   const handleDownloadOfflineTiles = async () => {
@@ -449,11 +557,14 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <button
             type="button"
             onClick={handleLocateMe}
-            title="GPS ile Konumumu Göster (İnternet Gerekmez)"
-            aria-label="Konumumu Bul"
-            className="w-10 h-10 rounded-2xl bg-white text-slate-800 hover:text-blue-600 shadow-lg border border-slate-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+            title={isTracking ? 'Konum takibini durdur' : 'Konumumu ve yönümü göster (internet gerekmez)'}
+            aria-label={isTracking ? 'Konum takibini durdur' : 'Konumumu ve yönümü göster'}
+            aria-pressed={isTracking}
+            className={`w-12 h-12 rounded-2xl shadow-lg border flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+              isTracking ? 'bg-blue-600 border-blue-700' : 'bg-white border-slate-200'
+            }`}
           >
-            <Crosshair className="w-5 h-5 text-blue-600" />
+            <Crosshair className={`w-6 h-6 ${isTracking ? 'text-white' : 'text-blue-600'}`} />
           </button>
         </div>
 
