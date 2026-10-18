@@ -7,6 +7,7 @@ import {
   getCachedTileCount,
   CacheProgress,
 } from '../utils/tileCache';
+import { placeUrl } from '../utils/maps';
 import {
   MapPin,
   Navigation,
@@ -597,9 +598,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 onClick={() => onOpenStopDetail(selectedPopupStop)}
                 className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer"
               >
-                <span>Detaylı Rehberi & Yol Tarifini Aç</span>
+                <span>Detaylı Rehber</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
+              <a
+                href={placeUrl(selectedPopupStop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Google Haritalar</span>
+              </a>
             </div>
           </div>
         )}
