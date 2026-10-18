@@ -134,13 +134,16 @@ export const TransitTimetableCard: React.FC<TransitTimetableCardProps> = ({
             </div>
           )}
 
-          {/* Sefer Saatleri (Scheduled Departure Times Grid) */}
-          {transit.scheduledTimes && transit.scheduledTimes.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
-                <Clock className="w-3.5 h-3.5 text-slate-500" />
-                <span>Örnek Sefer Saatleri (Offline Liste):</span>
-              </div>
+          {/* Sefer aralığı & doğrulama durumu */}
+          <div className="space-y-2">
+            <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span>İlk / Son Sefer</span>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 font-medium">
+              {transit.serviceWindow}
+            </div>
+            {transit.scheduledTimes && transit.scheduledTimes.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {transit.scheduledTimes.map((time, idx) => (
                   <span
@@ -151,8 +154,36 @@ export const TransitTimetableCard: React.FC<TransitTimetableCardProps> = ({
                   </span>
                 ))}
               </div>
+            )}
+            <div
+              className={`p-3 rounded-xl border text-[11px] leading-relaxed ${
+                transit.verification === 'kaynakli'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
+              <strong>
+                {transit.verification === 'kaynakli'
+                  ? 'Web kaynağından derlendi'
+                  : 'Yaklaşık bilgi — yerinde teyit edin'}
+                :
+              </strong>{' '}
+              {transit.sourceNote}
+              {transit.officialUrl && (
+                <>
+                  {' '}
+                  <a
+                    href={transit.officialUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-semibold"
+                  >
+                    Resmi tarife ↗
+                  </a>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Duraklar ve Güzergah Çizgisi (Stops Sequence Timeline) */}
           {transit.stopsSequence && transit.stopsSequence.length > 0 && (

@@ -18,10 +18,18 @@ import {
   Save,
   Ship,
   Train,
+  Ticket,
+  Hourglass,
+  Star,
+  Lightbulb,
+  BookOpen,
+  Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 import { ItineraryStop } from '../types';
 import { saveStopNote, getCustomNotes } from '../utils/storage';
 import { TransitTimetableCard } from './TransitTimetableCard';
+import { PLACE_DETAILS } from '../data/placeDetails';
 
 interface StopDetailModalProps {
   stop: ItineraryStop | null;
@@ -145,6 +153,15 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
           {/* Top action row */}
           <div className="relative z-10 flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-medium text-amber-200/90 tracking-wide uppercase">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Geri"
+                className="mr-1 -ml-2 min-h-[44px] pl-1 pr-3 flex items-center gap-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white normal-case text-sm font-semibold cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Geri</span>
+              </button>
               <span>{stop.day}. Gün</span>
               <span>·</span>
               <span className="flex items-center gap-1">
@@ -248,6 +265,11 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
               <span>{isCompleted ? 'Ziyaret Edildi Olarak İşaretlendi' : 'Ziyaret Edildi Olarak İşaretle'}</span>
             </button>
           </div>
+
+          {/* Mekan Bilgileri: ikonlu özet + açılır bölümler */}
+          {PLACE_DETAILS[stop.id] && (
+            <PlaceInfoSection details={PLACE_DETAILS[stop.id]} />
+          )}
 
           {/* Offline Transit Timetable & Pier/Platform details */}
           {stop.transitInfo && (
@@ -416,3 +438,94 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
     </div>
   );
 };
+
+
+function PlaceInfoSection({ details }: { details: import('../data/placeDetails').PlaceDetails }) {
+  const [open, setOpen] = useState<string | null>('highlights');
+  const toggle = (k: string) => setOpen((cur) => (cur === k ? null : k));
+
+  const facts: { key: string; label: string; value?: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+    { key: 'hours', label: 'Saatler', value: details.hours, Icon: Clock },
+    { key: 'ticket', label: 'Fiyat', value: details.ticket, Icon: Ticket },
+    { key: 'duration', label: 'Süre', value: details.duration, Icon: Hourglass },
+    { key: 'best', label: 'En iyi zaman', value: details.bestTime, Icon: Star },
+  ];
+
+  const sections: { key: string; label: string; Icon: React.ComponentType<{ className?: string }>; body: React.ReactNode }[] = [];
+  if (details.highlights?.length)
+    sections.push({
+      key: 'highlights',
+      label: 'Kaçırılmaz',
+      Icon: Sparkles,
+      body: (
+        <ul className="space-y-1.5">
+          {details.highlights.map((h, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="text-amber-600 font-bold">·</span>
+              <span>{h}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  if (details.history)
+    sections.push({ key: 'history', label: 'Tarihçe', Icon: BookOpen, body: <p>{details.history}</p> });
+  if (details.tips?.length)
+    sections.push({
+      key: 'tips',
+      label: 'İpuçları',
+      Icon: Lightbulb,
+      body: (
+        <ul className="space-y-1.5">
+          {details.tips.map((t, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="text-amber-600 font-bold">·</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  if (details.nearby)
+    sections.push({ key: 'nearby', label: 'Yakında', Icon: MapPin, body: <p>{details.nearby}</p> });
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {facts
+          .filter((f) => f.value)
+          .map(({ key, label, value, Icon }) => (
+            <div key={key} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                <Icon className="w-3.5 h-3.5 text-amber-700" />
+                {label}
+              </div>
+              <div className="text-slate-800 leading-relaxed">{value}</div>
+            </div>
+          ))}
+      </div>
+
+      {sections.map(({ key, label, Icon, body }) => (
+        <div key={key} className="rounded-xl border border-slate-200 overflow-hidden">
+          <button
+            type="button"
+            aria-expanded={open === key}
+            onClick={() => toggle(key)}
+            className="w-full min-h-[48px] px-4 flex items-center justify-between gap-2 bg-white text-sm font-semibold text-slate-900 cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <Icon className="w-4 h-4 text-amber-700" />
+              {label}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${open === key ? 'rotate-180' : ''}`} />
+          </button>
+          {open === key && <div className="px-4 pb-4 text-sm text-slate-700 leading-relaxed">{body}</div>}
+        </div>
+      ))}
+
+      <p className="text-[11px] text-slate-500 leading-relaxed">
+        Saat ve fiyatlar yaklaşık değerlerdir ve mevsime göre değişir; gitmeden resmi siteden teyit edin.
+      </p>
+    </div>
+  );
+}

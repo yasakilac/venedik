@@ -68,6 +68,28 @@ export default function App() {
     };
   }, []);
 
+  // Tarayıcı/telefon "geri" hareketi detay ekranını kapatır (sayfa ve kaydırma konumu korunur)
+  const openDetail = (stop: ItineraryStop) => {
+    if (!window.history.state?.venetoDetail) {
+      window.history.pushState({ venetoDetail: true }, '');
+    }
+    setActiveDetailStop(stop);
+  };
+
+  const closeDetail = () => {
+    if (window.history.state?.venetoDetail) {
+      window.history.back();
+    } else {
+      setActiveDetailStop(null);
+    }
+  };
+
+  useEffect(() => {
+    const onPop = () => setActiveDetailStop(null);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   const handleToggleComplete = (stopId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const updated = toggleCompletedStop(stopId);
@@ -321,7 +343,7 @@ export default function App() {
                     stop={stop}
                     isCompleted={completedIds.includes(stop.id)}
                     onToggleComplete={(e) => handleToggleComplete(stop.id, e)}
-                    onClickCard={() => setActiveDetailStop(stop)}
+                    onClickCard={() => openDetail(stop)}
                   />
                 ))
               ) : (
@@ -351,7 +373,7 @@ export default function App() {
             stops={INITIAL_STOPS}
             selectedDay={selectedDayNumber}
             onSelectDay={setSelectedDayNumber}
-            onOpenStopDetail={(stop) => setActiveDetailStop(stop)}
+            onOpenStopDetail={(stop) => openDetail(stop)}
             completedStopIds={completedIds}
           />
         )}
@@ -374,7 +396,7 @@ export default function App() {
       {/* Detail Popup Modal (Slide-up mobile drawer) */}
       <StopDetailModal
         stop={activeDetailStop}
-        onClose={() => setActiveDetailStop(null)}
+        onClose={closeDetail}
         isCompleted={activeDetailStop ? completedIds.includes(activeDetailStop.id) : false}
         onToggleComplete={() => activeDetailStop && handleToggleComplete(activeDetailStop.id)}
         isFavorite={activeDetailStop ? favoriteIds.includes(activeDetailStop.id) : false}

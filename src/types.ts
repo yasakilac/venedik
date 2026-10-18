@@ -16,7 +16,11 @@ export interface TransitScheduleInfo {
   arrivalPierOrTrack: string;
   travelDurationMin: number;
   frequency: string; // e.g. "Her 20 dakikada bir", "Her 10-15 dakikada bir"
-  scheduledTimes: string[]; // e.g. ["14:10", "14:40", "15:10", "15:40"]
+  serviceWindow: string; // ilk / son sefer aralığı, e.g. "04:20 - 22:25 arası"
+  scheduledTimes?: string[]; // yalnızca resmi kaynaktan doğrulanmış kesin saatler varsa
+  verification: 'kaynakli' | 'tahmini'; // 'kaynakli': web kaynağında bulundu · 'tahmini': yerinde teyit edin
+  sourceNote: string; // bilginin nereden geldiği ve nerede teyit edileceği
+  officialUrl?: string;
   stopsSequence: TransitStopItem[];
   ticketType: 'actv_pass' | 'train_ticket' | 'airport_bus' | 'cash_coins';
   ticketPriceStr: string;
