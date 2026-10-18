@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ItineraryStop } from '../types';
 import { PLACE_DETAILS } from '../data/placeDetails';
+import { placeUrl } from '../utils/maps';
 
 interface StopCardProps {
   stop: ItineraryStop;
@@ -50,14 +51,6 @@ export const StopCard: React.FC<StopCardProps> = ({
   const CategoryIcon = config.icon;
   const details = PLACE_DETAILS[stop.id];
   const [expanded, setExpanded] = React.useState(false);
-
-  const handleMapsClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      stop.mapsQuery || stop.title
-    )}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
 
   return (
     <div
@@ -221,15 +214,18 @@ export const StopCard: React.FC<StopCardProps> = ({
             </span>
 
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleMapsClick}
-                title="Google Haritalar'da Aç"
-                className="p-1.5 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-1 text-[11px] font-medium"
+              <a
+                href={placeUrl(stop)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title="Google Haritalar'da aç"
+                className="min-h-[44px] px-2 rounded-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-1 text-[11px] font-semibold"
               >
-                <span>Harita</span>
+                <MapPin className="w-4 h-4" />
+                <span>Google Haritalar</span>
                 <ExternalLink className="w-3.5 h-3.5" />
-              </button>
+              </a>
 
               <div className="text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all">
                 <ChevronRight className="w-4 h-4" />

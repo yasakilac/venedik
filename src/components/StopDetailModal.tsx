@@ -30,6 +30,7 @@ import { ItineraryStop } from '../types';
 import { saveStopNote, getCustomNotes } from '../utils/storage';
 import { TransitTimetableCard } from './TransitTimetableCard';
 import { PLACE_DETAILS } from '../data/placeDetails';
+import { placeUrl, coordUrl, directionsUrl } from '../utils/maps';
 
 interface StopDetailModalProps {
   stop: ItineraryStop | null;
@@ -81,16 +82,8 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
     setTimeout(() => setNoteSaved(false), 2000);
   };
 
-  const openGoogleMaps = () => {
-    const query = stop.mapsQuery || `${stop.title} ${stop.address}`;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   const handleShare = async () => {
-    const text = `${stop.title} (${stop.timeRange})\n${stop.address}\nGoogle Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      stop.mapsQuery || stop.title
-    )}`;
+    const text = `${stop.title} (${stop.timeRange})\n${stop.address}\nGoogle Maps: ${placeUrl(stop)}`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -235,14 +228,15 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
         <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 text-slate-800">
           {/* Quick Primary Actions: Google Maps & Visited Toggle */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={openGoogleMaps}
+            <a
+              href={placeUrl(stop)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="h-12 rounded-xl bg-slate-900 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-md shadow-slate-900/10 cursor-pointer"
             >
               <ExternalLink className="w-4 h-4 text-amber-400" />
-              <span>Google Haritalar & Yol Tarifi</span>
-            </button>
+              <span>Google Haritalar’da Aç</span>
+            </a>
 
             <button
               type="button"
@@ -264,6 +258,27 @@ export const StopDetailModal: React.FC<StopDetailModalProps> = ({
               </div>
               <span>{isCompleted ? 'Ziyaret Edildi Olarak İşaretlendi' : 'Ziyaret Edildi Olarak İşaretle'}</span>
             </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 -mt-3">
+            <a
+              href={directionsUrl(stop)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-slate-50"
+            >
+              <Compass className="w-4 h-4 text-amber-700" />
+              Yürüyerek yol tarifi
+            </a>
+            <a
+              href={coordUrl(stop)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-11 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-slate-50"
+            >
+              <MapPin className="w-4 h-4 text-amber-700" />
+              Koordinatla aç
+            </a>
           </div>
 
           {/* Mekan Bilgileri: ikonlu özet + açılır bölümler */}
