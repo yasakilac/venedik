@@ -1,0 +1,498 @@
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import L from 'leaflet';
+import { ItineraryStop } from '../types';
+import {
+  downloadAllTripTiles,
+  isTilesCacheReady,
+  getCachedTileCount,
+  CacheProgress,
+} from '../utils/tileCache';
+import {
+  MapPin,
+  Navigation,
+  Compass,
+  Layers,
+  DownloadCloud,
+  CheckCircle2,
+  Crosshair,
+  RotateCcw,
+  AlertTriangle,
+  ChevronRight,
+  Clock,
+  Sparkles,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
+
+interface InteractiveMapProps {
+  stops: ItineraryStop[];
+  selectedDay: number;
+  onSelectDay: (day: number) => void;
+  onOpenStopDetail: (stop: ItineraryStop) => void;
+  completedStopIds: string[];
+}
+
+const REGION_BOUNDS = {
+  padova: { center: [45.4064, 11.8768] as [number, number], zoom: 15, label: 'Padova' },
+  venice: { center: [45.4371, 12.3326] as [number, number], zoom: 15, label: 'Venedik Merkez' },
+  islands: { center: [45.4854, 12.4167] as [number, number], zoom: 14, label: 'Burano & Murano' },
+  all: { center: [45.4385, 12.1800] as [number, number], zoom: 11, label: 'Tüm Rota' },
+};
+
+const DAY_COLORS: Record<number, string> = {
+  1: '#d97706', // amber-600
+  2: '#0284c7', // sky-600
+  3: '#0d9488', // teal-600
+  4: '#78716c', // stone-500
+};
+
+export const InteractiveMap: React.FC<InteractiveMapProps> = ({
+  stops,
+  selectedDay,
+  onSelectDay,
+  onOpenStopDetail,
+  completedStopIds,
+}) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const userLocationMarkerRef = useRef<L.CircleMarker | null>(null);
+
+  // Offline tile cache state
+  const [isCached, setIsCached] = useState<boolean>(isTilesCacheReady());
+  const [cachedCount, setCachedCount] = useState<number>(getCachedTileCount());
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<CacheProgress | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [selectedPopupStop, setSelectedPopupStop] = useState<ItineraryStop | null>(null);
+  const [tileSource, setTileSource] = useState<'osm' | 'voyager'>('osm');
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+
+  const filteredStops = useMemo(() => {
+    return selectedDay === 0 ? stops : stops.filter((s) => s.day === selectedDay);
+  }, [stops, selectedDay]);
+
+  // Initialize Leaflet Map with Offline Cache Interceptor
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [45.4371, 12.3326],
+        zoom: 13,
+        zoomControl: false,
+        attributionControl: true,
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      // Custom Offline-First TileLayer
+      // Subclass createTile to check CacheStorage first
+      const OfflineCachedTileLayer = L.TileLayer.extend({
+        createTile(coords: { x: number; y: number; z: number }, done: (error: Error | null, tile: HTMLElement) => void) {
+          const tile = document.createElement('img');
+
+          L.DomEvent.on(tile, 'load', L.Util.bind((this as any)._tileOnLoad, this, done, tile));
+          L.DomEvent.on(tile, 'error', L.Util.bind((this as any)._tileOnError, this, done, tile));
+
+          if ((this as any).options.crossOrigin || (this as any).options.crossOrigin === '') {
+            tile.crossOrigin = (this as any).options.crossOrigin === true ? '' : (this as any).options.crossOrigin;
+          }
+
+          tile.alt = '';
+          tile.setAttribute('role', 'presentation');
+
+          const url = (this as any).getTileUrl(coords);
+
+          // Try loading from browser cache first for offline capability
+          if ('caches' in window) {
+            caches.open('veneto-osm-tiles-v1').then((cache) => {
+              cache.match(url).then((response) => {
+                if (response) {
+                  response.blob().then((blob) => {
+                    tile.src = URL.createObjectURL(blob);
+                  });
+                } else {
+                  // Not in cache, load from network and cache it
+                  tile.src = url;
+                  if (navigator.onLine) {
+                    fetch(url, { mode: 'cors' })
+                      .then((netRes) => {
+                        if (netRes.ok) cache.put(url, netRes);
+                      })
+                      .catch(() => {});
+                  }
+                }
+              }).catch(() => {
+                tile.src = url;
+              });
+            }).catch(() => {
+              tile.src = url;
+            });
+          } else {
+            tile.src = url;
+          }
+
+          return tile;
+        },
+      });
+
+      const currentTileUrl =
+        tileSource === 'osm'
+          ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+      const tileLayer = new (OfflineCachedTileLayer as any)(currentTileUrl, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+        crossOrigin: true,
+      }).addTo(map);
+
+      tileLayerRef.current = tileLayer;
+
+      const markersGroup = L.layerGroup().addTo(map);
+      markersLayerRef.current = markersGroup;
+
+      mapInstanceRef.current = map;
+    }
+
+    return () => {
+      // Map cleanup
+    };
+  }, []);
+
+  // Update Tile Layer if source changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    const url =
+      tileSource === 'osm'
+        ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    tileLayerRef.current.setUrl(url);
+  }, [tileSource]);
+
+  // Update Markers & Polylines when stops or day change
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const markersGroup = markersLayerRef.current;
+    if (!map || !markersGroup) return;
+
+    markersGroup.clearLayers();
+
+    if (routePolylineRef.current) {
+      map.removeLayer(routePolylineRef.current);
+      routePolylineRef.current = null;
+    }
+
+    const bounds = L.latLngBounds([]);
+    const polylineCoords: [number, number][] = [];
+
+    filteredStops.forEach((stop, index) => {
+      const isCompleted = completedStopIds.includes(stop.id);
+      const color = DAY_COLORS[stop.day] || '#f59e0b';
+      polylineCoords.push(stop.coordinates);
+
+      const customHtml = `
+        <div style="
+          background-color: ${isCompleted ? '#10b981' : color};
+          color: white;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 13px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+          border: 2.5px solid #ffffff;
+          cursor: pointer;
+        ">
+          ${isCompleted ? '✓' : index + 1}
+        </div>
+      `;
+
+      const customIcon = L.divIcon({
+        html: customHtml,
+        className: 'custom-map-pin',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      const marker = L.marker(stop.coordinates, { icon: customIcon });
+
+      marker.on('click', () => {
+        setSelectedPopupStop(stop);
+      });
+
+      markersGroup.addLayer(marker);
+      bounds.extend(stop.coordinates);
+    });
+
+    // Draw route line connecting the day's stops
+    if (polylineCoords.length > 1 && selectedDay !== 0) {
+      const routeColor = DAY_COLORS[selectedDay] || '#f59e0b';
+      const poly = L.polyline(polylineCoords, {
+        color: routeColor,
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '8, 8',
+      }).addTo(map);
+      routePolylineRef.current = poly;
+    }
+
+    if (filteredStops.length > 0 && bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+  }, [filteredStops, selectedDay, completedStopIds]);
+
+  // GPS Locate User Feature (Works via Satellite even with no data!)
+  const handleLocateMe = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (!('geolocation' in navigator)) {
+      alert('Cihazınız konum özelliğini desteklemiyor.');
+      return;
+    }
+
+    setStatusMessage('GPS uydularından konum alınıyor...');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        const latlng: [number, number] = [latitude, longitude];
+
+        if (userLocationMarkerRef.current) {
+          map.removeLayer(userLocationMarkerRef.current);
+        }
+
+        const marker = L.circleMarker(latlng, {
+          radius: 9,
+          fillColor: '#2563eb',
+          color: '#ffffff',
+          weight: 3,
+          opacity: 1,
+          fillOpacity: 0.9,
+        }).addTo(map);
+
+        userLocationMarkerRef.current = marker;
+        map.flyTo(latlng, 16, { duration: 1.2 });
+        setStatusMessage(`Konumunuz bulundu! (Hassasiyet: ~${Math.round(accuracy)}m)`);
+        setTimeout(() => setStatusMessage(''), 4000);
+      },
+      (err) => {
+        console.warn('Geolocation error', err);
+        setStatusMessage('GPS konumu alınamadı. Lütfen konum izinlerini kontrol edin.');
+        setTimeout(() => setStatusMessage(''), 4000);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Download all OpenStreetMap tiles for offline use
+  const handleDownloadOfflineTiles = async () => {
+    setIsDownloading(true);
+    setDownloadProgress({ total: 0, completed: 0, percent: 0, statusText: 'İndirme başlıyor...' });
+
+    try {
+      const result = await downloadAllTripTiles((p) => {
+        setDownloadProgress({ ...p });
+      });
+
+      setIsCached(true);
+      setCachedCount(result.totalCached);
+      setStatusMessage(`Harita başarıyla indirildi! ${result.totalCached} sokak karosu artık internetsiz çalışır.`);
+    } catch (e: any) {
+      console.error('Tile download error', e);
+      setStatusMessage('İndirme sırasında bir sorun oluştu. Lütfen bağlantınızı kontrol edin.');
+    } finally {
+      setIsDownloading(false);
+      setTimeout(() => setStatusMessage(''), 5000);
+    }
+  };
+
+  const handleFlyTo = (region: keyof typeof REGION_BOUNDS) => {
+    if (!mapInstanceRef.current) return;
+    const target = REGION_BOUNDS[region];
+    mapInstanceRef.current.flyTo(target.center, target.zoom, { duration: 1.2 });
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-8.5rem)] sm:h-[calc(100vh-6rem)] w-full max-w-5xl mx-auto px-2 sm:px-4 py-2 select-none">
+      {/* Top Controls Bar */}
+      <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm mb-2 space-y-2.5">
+        {/* Offline Download Status & Action Row */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {isCached ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Çevrimdışı Harita Hazır ({cachedCount} karo kayıtlı)</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-medium">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Harita henüz çevrimdışı indirilmedi</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isDownloading}
+              onClick={handleDownloadOfflineTiles}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+                isDownloading
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+              }`}
+            >
+              <DownloadCloud className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isDownloading ? 'İndiriliyor...' : 'Haritayı Çevrimdışı İndir'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Download Progress Bar Modal/Bar */}
+        {isDownloading && downloadProgress && (
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 animate-in fade-in">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+              <span>Venedik & Padova Sokakları Hafızaya Kaydediliyor...</span>
+              <span className="font-mono text-amber-700">%{downloadProgress.percent}</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-amber-600 h-full transition-all duration-200"
+                style={{ width: `${downloadProgress.percent}%` }}
+              />
+            </div>
+            <div className="text-[11px] text-slate-500 font-mono text-right">
+              {downloadProgress.statusText}
+            </div>
+          </div>
+        )}
+
+        {statusMessage && !isDownloading && (
+          <div className="p-2.5 bg-sky-50 border border-sky-200 text-sky-900 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
+            <Sparkles className="w-4 h-4 text-sky-600 shrink-0" />
+            <span>{statusMessage}</span>
+          </div>
+        )}
+
+        {/* Day Filters & Quick City Jumps */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+          {/* Day pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">
+            <span className="text-slate-400 font-medium shrink-0 flex items-center gap-1">
+              <Layers className="w-3 h-3" />
+              Gün:
+            </span>
+            <button
+              onClick={() => onSelectDay(0)}
+              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                selectedDay === 0
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Tümü ({stops.length})
+            </button>
+            {[1, 2, 3, 4].map((d) => (
+              <button
+                key={d}
+                onClick={() => onSelectDay(d)}
+                className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                  selectedDay === d
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {d}. Gün
+              </button>
+            ))}
+          </div>
+
+          {/* Quick city jumps */}
+          <div className="flex items-center gap-1 text-xs">
+            <span className="text-slate-400 font-medium hidden sm:inline">Odak:</span>
+            <button
+              onClick={() => handleFlyTo('padova')}
+              className="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 font-medium text-[11px] cursor-pointer"
+            >
+              Padova
+            </button>
+            <button
+              onClick={() => handleFlyTo('venice')}
+              className="px-2 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-900 font-medium text-[11px] cursor-pointer"
+            >
+              Venedik
+            </button>
+            <button
+              onClick={() => handleFlyTo('islands')}
+              className="px-2 py-0.5 rounded bg-teal-50 hover:bg-teal-100 text-teal-900 font-medium text-[11px] cursor-pointer"
+            >
+              Burano
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Map Container */}
+      <div className="relative flex-1 rounded-2xl overflow-hidden border border-slate-300 shadow-inner bg-slate-100">
+        <div ref={mapContainerRef} className="w-full h-full" />
+
+        {/* GPS Locate Me Button (Pulsing blue satellite tracking) */}
+        <div className="absolute top-3 right-3 z-[1000]">
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            title="GPS ile Konumumu Göster (İnternet Gerekmez)"
+            aria-label="Konumumu Bul"
+            className="w-10 h-10 rounded-2xl bg-white text-slate-800 hover:text-blue-600 shadow-lg border border-slate-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+          >
+            <Crosshair className="w-5 h-5 text-blue-600" />
+          </button>
+        </div>
+
+        {/* Selected Stop Details Floating Mobile Card */}
+        {selectedPopupStop && (
+          <div className="absolute bottom-3 left-3 right-14 sm:right-auto sm:w-88 z-[1000] bg-white rounded-2xl p-4 border border-slate-300 shadow-2xl animate-in slide-in-from-bottom-3 duration-200">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                {selectedPopupStop.day}. Gün · {selectedPopupStop.timeRange}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedPopupStop(null)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold p-0.5"
+              >
+                ✕
+              </button>
+            </div>
+
+            <h4 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
+              {selectedPopupStop.title}
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+              {selectedPopupStop.address}
+            </p>
+
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenStopDetail(selectedPopupStop)}
+                className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer"
+              >
+                <span>Detaylı Rehberi & Yol Tarifini Aç</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

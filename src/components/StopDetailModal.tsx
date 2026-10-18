@@ -1,0 +1,418 @@
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  MapPin,
+  Clock,
+  ExternalLink,
+  Camera,
+  Compass,
+  Utensils,
+  Info,
+  Check,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
+  Share2,
+  AlertTriangle,
+  FileText,
+  Save,
+  Ship,
+  Train,
+} from 'lucide-react';
+import { ItineraryStop } from '../types';
+import { saveStopNote, getCustomNotes } from '../utils/storage';
+import { TransitTimetableCard } from './TransitTimetableCard';
+
+interface StopDetailModalProps {
+  stop: ItineraryStop | null;
+  onClose: () => void;
+  isCompleted: boolean;
+  onToggleComplete: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  onSelectStop: (stop: ItineraryStop) => void;
+  allStopsInDay: ItineraryStop[];
+}
+
+export const StopDetailModal: React.FC<StopDetailModalProps> = ({
+  stop,
+  onClose,
+  isCompleted,
+  onToggleComplete,
+  isFavorite,
+  onToggleFavorite,
+  onSelectStop,
+  allStopsInDay,
+}) => {
+  const [userNote, setUserNote] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  useEffect(() => {
+    if (stop) {
+      const notes = getCustomNotes();
+      setUserNote(notes[stop.id] || '');
+      setNoteSaved(false);
+      // Prevent background scrolling
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [stop]);
+
+  if (!stop) return null;
+
+  const currentIndex = allStopsInDay.findIndex((s) => s.id === stop.id);
+  const prevStop = currentIndex > 0 ? allStopsInDay[currentIndex - 1] : null;
+  const nextStop =
+    currentIndex < allStopsInDay.length - 1 ? allStopsInDay[currentIndex + 1] : null;
+
+  const handleSaveNote = () => {
+    saveStopNote(stop.id, userNote);
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 2000);
+  };
+
+  const openGoogleMaps = () => {
+    const query = stop.mapsQuery || `${stop.title} ${stop.address}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShare = async () => {
+    const text = `${stop.title} (${stop.timeRange})\n${stop.address}\nGoogle Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      stop.mapsQuery || stop.title
+    )}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: stop.title,
+          text,
+        });
+      } catch {
+        // user cancelled share
+      }
+    } else {
+      navigator.clipboard.writeText(text);
+      alert('Durak bilgileri panoya kopyalandı!');
+    }
+  };
+
+  // Aesthetic Visual Theme based on Category & Day
+  const getBannerGradient = () => {
+    switch (stop.category) {
+      case 'coffee':
+        return 'from-amber-900 via-amber-800 to-stone-900';
+      case 'food':
+        return 'from-rose-950 via-red-900 to-stone-900';
+      case 'photo':
+        return 'from-indigo-950 via-slate-900 to-sky-950';
+      case 'transport':
+        return 'from-sky-950 via-blue-900 to-slate-900';
+      case 'shopping':
+        return 'from-purple-950 via-slate-900 to-stone-900';
+      default:
+        return 'from-slate-900 via-stone-900 to-emerald-950';
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
+      >
+        {/* Mobile Drag Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-2.5 sm:hidden shrink-0" />
+
+        {/* Visual Header Banner */}
+        <div className={`relative px-5 py-6 sm:px-8 sm:py-8 bg-gradient-to-br ${getBannerGradient()} text-white shrink-0 overflow-hidden`}>
+          {/* Subtle architectural contour motif */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="arch-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 0 40 L 40 40 M 20 0 Q 20 20 40 20 M 0 20 Q 20 20 20 0" fill="none" stroke="white" strokeWidth="1" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#arch-pattern)" />
+            </svg>
+          </div>
+
+          {/* Top action row */}
+          <div className="relative z-10 flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-amber-200/90 tracking-wide uppercase">
+              <span>{stop.day}. Gün</span>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {stop.timeRange}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                aria-label="Favorilere Ekle"
+                className={`p-2 rounded-full transition-colors cursor-pointer ${
+                  isFavorite
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Paylaş"
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Kapat"
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Title & Subtitle */}
+          <div className="relative z-10">
+            <h2 className="text-xl sm:text-2xl font-bold font-serif-heading text-white tracking-tight leading-tight">
+              {stop.title}
+            </h2>
+            <p className="text-sm text-slate-200/90 mt-1 leading-relaxed">
+              {stop.subtitle}
+            </p>
+          </div>
+
+          {/* Address & Cost row */}
+          <div className="relative z-10 mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-300">
+            <div className="flex items-center gap-1 truncate max-w-full">
+              <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">{stop.address}</span>
+            </div>
+            {stop.estimatedCost && (
+              <>
+                <span className="hidden sm:inline">·</span>
+                <span className="font-medium text-amber-300">
+                  {stop.estimatedCost}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Scrollable Body Content */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 text-slate-800">
+          {/* Quick Primary Actions: Google Maps & Visited Toggle */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={openGoogleMaps}
+              className="h-12 rounded-xl bg-slate-900 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-[0.98] transition-all shadow-md shadow-slate-900/10 cursor-pointer"
+            >
+              <ExternalLink className="w-4 h-4 text-amber-400" />
+              <span>Google Haritalar & Yol Tarifi</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleComplete}
+              className={`h-12 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                isCompleted
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                  isCompleted
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'border-slate-400'
+                }`}
+              >
+                {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+              <span>{isCompleted ? 'Ziyaret Edildi Olarak İşaretlendi' : 'Ziyaret Edildi Olarak İşaretle'}</span>
+            </button>
+          </div>
+
+          {/* Offline Transit Timetable & Pier/Platform details */}
+          {stop.transitInfo && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-sky-900 uppercase tracking-wider">
+                <Ship className="w-4 h-4 text-sky-600" />
+                <span>Çevrimdışı Sefer Saatleri & Peron/İskele Rehberi:</span>
+              </div>
+              <TransitTimetableCard transit={stop.transitInfo} defaultExpanded={true} />
+            </div>
+          )}
+
+          {/* Urgent / Closing Alert */}
+          {stop.closingAlert && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-amber-900">Zamanlama / Kapanış Uyarısı</h4>
+                <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">{stop.closingAlert}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Photography & New Lens Spotlight */}
+          {(stop.photographyTips || stop.lensSpotlight) && (
+            <div className="p-5 rounded-2xl bg-indigo-50/60 border border-indigo-100/80">
+              <div className="flex items-center gap-2 text-indigo-900 font-semibold text-sm mb-2">
+                <Camera className="w-4 h-4 text-indigo-600" />
+                <span>Yeni Lens & Fotoğrafçılık Rehberi</span>
+              </div>
+              {stop.photographyTips && (
+                <p className="text-sm text-indigo-950/90 leading-relaxed">
+                  {stop.photographyTips}
+                </p>
+              )}
+              {stop.lensSpotlight && (
+                <div className="mt-3 pt-3 border-t border-indigo-100 flex items-start gap-2 text-xs text-indigo-900/80 font-medium">
+                  <span className="text-indigo-600 font-bold uppercase tracking-wider shrink-0 text-[10px]">
+                    Kadraj / Diyafram:
+                  </span>
+                  <span>{stop.lensSpotlight}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Geographer's Perspective */}
+          {stop.geographyNote && (
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center gap-2 text-slate-900 font-semibold text-sm mb-2">
+                <Compass className="w-4 h-4 text-amber-700" />
+                <span>Coğrafyacı Gözüyle & Tarihsel Notlar</span>
+              </div>
+              <p className="text-sm text-slate-700 leading-relaxed">
+                {stop.geographyNote}
+              </p>
+            </div>
+          )}
+
+          {/* Culinary & Order Guidance */}
+          {stop.orderTips && stop.orderTips.length > 0 && (
+            <div className="p-5 rounded-2xl bg-rose-50/60 border border-rose-100">
+              <div className="flex items-center gap-2 text-rose-900 font-semibold text-sm mb-2">
+                <Utensils className="w-4 h-4 text-rose-600" />
+                <span>Ne Yenir / Ne İçilir? (Gurme Sipariş Rehberi)</span>
+              </div>
+              <ul className="space-y-2 text-sm text-rose-950/90">
+                {stop.orderTips.map((tip, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">·</span>
+                    <span className="leading-relaxed">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Practical Advice */}
+          {stop.practicalAdvice && (
+            <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-100 text-sm">
+              <div className="flex items-center gap-1.5 text-amber-900 font-semibold text-xs mb-1">
+                <Info className="w-4 h-4 text-amber-700" />
+                <span>Pratik Seyahat İpucu</span>
+              </div>
+              <p className="text-xs sm:text-sm text-amber-950 leading-relaxed">
+                {stop.practicalAdvice}
+              </p>
+            </div>
+          )}
+
+          {/* Personal Note Box */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="stop-user-notes" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                <span>Bu Durak İçin Kişisel Notunuz:</span>
+              </label>
+              {noteSaved && (
+                <span className="text-[11px] text-emerald-600 font-medium animate-in fade-in">
+                  Kaydedildi!
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <textarea
+                id="stop-user-notes"
+                value={userNote}
+                onChange={(e) => setUserNote(e.target.value)}
+                placeholder="Örn: Masayı önceden ayırt, saat 16:00'da fotoğraf çek, faturayı iste..."
+                rows={2}
+                className="w-full text-xs sm:text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none text-slate-800"
+              />
+              <button
+                type="button"
+                onClick={handleSaveNote}
+                className="mt-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Save className="w-3 h-3" />
+                <span>Notu Kaydet</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Navigation Bar (Prev / Next Stop) */}
+        <div className="px-5 py-3.5 sm:px-7 sm:py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            disabled={!prevStop}
+            onClick={() => prevStop && onSelectStop(prevStop)}
+            className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              prevStop
+                ? 'text-slate-700 hover:bg-slate-200/70'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Önceki:</span>
+            <span className="truncate max-w-[110px] sm:max-w-[150px]">
+              {prevStop ? prevStop.title : 'İlk Durak'}
+            </span>
+          </button>
+
+          <span className="text-xs text-slate-600 font-medium">
+            {currentIndex + 1} / {allStopsInDay.length}
+          </span>
+
+          <button
+            type="button"
+            disabled={!nextStop}
+            onClick={() => nextStop && onSelectStop(nextStop)}
+            className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              nextStop
+                ? 'text-slate-700 hover:bg-slate-200/70'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <span className="truncate max-w-[110px] sm:max-w-[150px]">
+              {nextStop ? nextStop.title : 'Son Durak'}
+            </span>
+            <span className="hidden sm:inline">:Sonraki</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

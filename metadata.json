@@ -1,0 +1,6 @@
+{
+  "name": "Veneto Explorer · Venedik & Padova Seyahat Rehberi",
+  "description": "Venedik ve Padova için 4 günlük interaktif seyahat kontrol listesi, çevrimdışı harita, detaylı popup'lar, ACTV Pass sayacı ve fotoğraf/lezzet ipuçları.",
+  "requestFramePermissions": ["notifications", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
