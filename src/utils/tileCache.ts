@@ -2,6 +2,7 @@
 // This allows real OpenStreetMap tiles to be saved to device storage and loaded with ZERO internet connection.
 
 import { INITIAL_STOPS } from '../data/itineraryData';
+import { ALT_STOPS } from '../data/altPlanData';
 
 const CACHE_NAME = 'veneto-osm-tiles-v1';
 const CACHE_STATUS_KEY = 'veneto_tiles_cache_status';
@@ -64,7 +65,7 @@ export function generateTripTileUrls(): string[] {
     [13, 1],
     [12, 1],
   ];
-  for (const stop of INITIAL_STOPS) {
+  for (const stop of [...INITIAL_STOPS, ...ALT_STOPS]) {
     const [lat, lng] = stop.coordinates;
     for (const [z, r] of rings) {
       const cx = long2tile(lng, z);

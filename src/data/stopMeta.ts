@@ -13,6 +13,13 @@ export const ROUTE_LABELS: Record<string, { from: string; to: string; modes: Tra
   'd4-mestre-venice': { from: 'Mestre', to: 'Venedik', modes: ['bus'] },
   'd4-traghetto-crossing': { from: 'Santa Sofia', to: 'Rialto', modes: ['gondola'] },
   'd4-airport-departure': { from: 'Mestre', to: 'Havalimanı', modes: ['bus'] },
+  'alt-d1-line1': { from: 'Lido', to: 'Piazzale Roma', modes: ['vaporetto'] },
+  'alt-d1-return-lido': { from: 'Venedik', to: 'Lido', modes: ['vaporetto'] },
+  'alt-d2-to-burano': { from: 'Lido', to: 'Burano', modes: ['vaporetto'] },
+  'alt-d2-murano-transfer': { from: 'Burano', to: 'Murano', modes: ['vaporetto'] },
+  'alt-d2-return-lido': { from: 'Murano', to: 'Lido', modes: ['vaporetto'] },
+  'alt-d3-to-padova': { from: 'Lido', to: 'Padova', modes: ['vaporetto', 'bus', 'train'] },
+  'alt-d3-return': { from: 'Padova', to: 'Mestre', modes: ['train'] },
 };
 
 // Başlığı yer adı olarak kalan ama vapurla ulaşılan duraklar (yalnızca simge)
