@@ -11,6 +11,13 @@
   }
 }
 
+/* iPhone X ve sonrası: çentik (notch) ve ana ekran çubuğu için güvenli alanlar */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pb-nav-safe { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+html { -webkit-text-size-adjust: 100%; }
+input, textarea, select { font-size: max(16px, 1em); } /* iOS odaklanınca otomatik yakınlaştırmayı engeller */
+
 /* Leaflet Map Customization for Italian/Veneto Style */
 .leaflet-container {
   width: 100%;

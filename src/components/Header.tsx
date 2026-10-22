@@ -19,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenIOSInstall,
 }) => {
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 text-slate-100 border-b border-slate-800 shadow-md backdrop-blur-md">
+    <header className="pt-safe sticky top-0 z-30 bg-slate-900 text-slate-100 border-b border-slate-800 shadow-md backdrop-blur-md">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         {/* Zone 1: Single text wordmark */}
         <div className="flex items-center gap-2 shrink-0">
