@@ -38,6 +38,7 @@ import {
   Sparkles,
   WifiOff,
   StickyNote,
+  Download,
 } from 'lucide-react';
 
 function PlanSwitcher({ plan, onSelect }: { plan: 'main' | 'alt'; onSelect: (p: 'main' | 'alt') => void }) {
@@ -91,6 +92,9 @@ export default function App() {
   const [liveWeather, setLiveWeather] = useState<LiveWeather | null>(() => loadCachedWeather());
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [isIOSModalOpen, setIsIOSModalOpen] = useState<boolean>(false);
+  const isStandalone =
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
 
   useEffect(() => {
@@ -221,7 +225,7 @@ export default function App() {
   const dayProgressPercent = Math.round((dayCompletedCount / dayStops.length) * 100) || 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 sm:pb-12 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-nav-safe sm:pb-12 flex flex-col font-sans">
       {/* Top Bar Header */}
       <Header
         activeTab={activeTab}
@@ -237,6 +241,24 @@ export default function App() {
         {/* ================= TAB 1: ITINERARY CHECKLIST ================= */}
         {activeTab === 'itinerary' && (
           <div className="space-y-4 sm:space-y-6">
+            {/* iPhone'a indir (kurulu uygulamada gizlenir) */}
+            {!isStandalone && (
+              <button
+                type="button"
+                onClick={() => setIsIOSModalOpen(true)}
+                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl bg-slate-900 text-white flex items-center justify-between gap-3 shadow-sm cursor-pointer text-left"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Download className="w-5 h-5 text-amber-400 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-bold">Telefona İndir</span>
+                    <span className="block text-[11px] text-slate-300">İnternetsiz çalışır · iPhone X ve üzeri</span>
+                  </span>
+                </span>
+                <span className="text-xs font-semibold text-amber-300 shrink-0">Kur →</span>
+              </button>
+            )}
+
             {/* Plan Switcher */}
             <PlanSwitcher plan={plan} onSelect={handleSelectPlan} />
 
@@ -476,7 +498,7 @@ export default function App() {
       />
 
       {/* Mobile Fixed Bottom Navigation Bar (Pattern 1 - 15% sticky cap) */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200">
+      <div className="pb-safe sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200">
         <div className="grid grid-cols-5 items-center h-16 px-1">
           <button
             type="button"

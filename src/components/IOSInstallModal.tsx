@@ -36,7 +36,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 text-slate-800"
+        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 text-slate-800"
       >
         {/* Header */}
         <div className="p-5 sm:p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex items-center justify-between">
@@ -170,9 +170,9 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="pb-safe p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <span className="text-xs text-slate-500">
-            iOS 16, 17 ve 18 Safari ile tam uyumludur.
+            iPhone X ve üzeri, iOS 16+ Safari ile uyumludur.
           </span>
           <button
             type="button"

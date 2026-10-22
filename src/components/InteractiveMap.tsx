@@ -489,7 +489,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] sm:h-[calc(100vh-6rem)] w-full max-w-5xl mx-auto px-2 sm:px-4 py-2 select-none">
+    <div className="flex flex-col h-[calc(100dvh_-_8.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] sm:h-[calc(100dvh_-_6rem)] w-full max-w-5xl mx-auto px-2 sm:px-4 py-2 select-none">
       {/* Top Controls Bar */}
       <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm mb-2 space-y-2.5">
         {/* Offline Download Status & Action Row */}
