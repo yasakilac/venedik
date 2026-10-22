@@ -13,7 +13,10 @@ export interface PlaceDetails {
   nearby?: string; // yakında ne var
 }
 
+import { ALT_PLACE_DETAILS } from './altPlaceInfo';
+
 export const PLACE_DETAILS: Record<string, PlaceDetails> = {
+  ...ALT_PLACE_DETAILS,
   'd1-airport-transfer': {
     duration: '≈ 70 dk (direkt) · ≈ 60-75 dk (Mestre aktarmalı)',
     ticket: '≈ 8,50-10 € kişi başı',

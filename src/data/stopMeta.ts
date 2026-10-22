@@ -44,7 +44,10 @@ const PADOVA =
 const VENICE =
   'Venedik’te araç yok: ana ulaşım yürüyüş. Alternatif: Hat 1 / 2 vaporetto (48 saatlik bilet geçerliyken ücretsiz) ve 2 € nakit traghetto ile Büyük Kanal geçişi. Köprü ve merdivenler valizle zordur.';
 
+import { ALT_ACCESS_INFO } from './altPlaceInfo';
+
 export const ACCESS_INFO: Record<string, AccessInfo> = {
+  ...ALT_ACCESS_INFO,
   'd1-lens-shop': { alt: PADOVA },
   'd1-orto-botanico': { alt: PADOVA, route: 'Prato della Valle üzerinden yürümek Via Orto Botanico’ya en kolay yoldur.' },
   'd1-prato-valle': { alt: PADOVA },
