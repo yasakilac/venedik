@@ -3,6 +3,7 @@ import {
   DAYS_INFO,
   INITIAL_STOPS,
 } from './data/itineraryData';
+import { ALT_DAYS_INFO, ALT_STOPS } from './data/altPlanData';
 import { ItineraryStop } from './types';
 import {
   getCompletedStops,
@@ -39,8 +40,43 @@ import {
   StickyNote,
 } from 'lucide-react';
 
+function PlanSwitcher({ plan, onSelect }: { plan: 'main' | 'alt'; onSelect: (p: 'main' | 'alt') => void }) {
+  const options: { id: 'main' | 'alt'; label: string; hint: string }[] = [
+    { id: 'main', label: 'Ana Plan', hint: '4 gün · Padova & Venedik' },
+    { id: 'alt', label: 'Alternatif Plan', hint: '3 gün · Lido, adalar, Padova bisiklet' },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Plan seçimi">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="tab"
+          aria-selected={plan === o.id}
+          onClick={() => onSelect(o.id)}
+          className={`min-h-[44px] px-3 py-2 rounded-2xl text-left border transition-colors cursor-pointer ${
+            plan === o.id
+              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <div className="text-xs sm:text-sm font-bold">{o.label}</div>
+          <div className={`text-[10px] truncate ${plan === o.id ? 'text-amber-100' : 'text-slate-500'}`}>{o.hint}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'itinerary' | 'map' | 'transit' | 'budget' | 'notes'>('itinerary');
+  const [plan, setPlan] = useState<'main' | 'alt'>(() => {
+    try {
+      return localStorage.getItem('veneto_active_plan_v1') === 'alt' ? 'alt' : 'main';
+    } catch {
+      return 'main';
+    }
+  });
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -127,12 +163,27 @@ export default function App() {
     setFavoriteIds([...updated]);
   };
 
-  const currentDayInfo = DAYS_INFO.find((d) => d.dayNumber === selectedDayNumber) || DAYS_INFO[0];
+  const daysInfo = plan === 'alt' ? ALT_DAYS_INFO : DAYS_INFO;
+  const allStops = plan === 'alt' ? ALT_STOPS : INITIAL_STOPS;
+
+  const handleSelectPlan = (next: 'main' | 'alt') => {
+    setPlan(next);
+    setSelectedDayNumber(1);
+    setSelectedCategoryFilter('all');
+    setSearchQuery('');
+    try {
+      localStorage.setItem('veneto_active_plan_v1', next);
+    } catch {
+      // depolama yasak: sessizce geç
+    }
+  };
+
+  const currentDayInfo = daysInfo.find((d) => d.dayNumber === selectedDayNumber) || daysInfo[0];
 
   // Filtered stops for the current day
   const dayStops = useMemo(() => {
-    return INITIAL_STOPS.filter((s) => s.day === selectedDayNumber);
-  }, [selectedDayNumber]);
+    return allStops.filter((s) => s.day === selectedDayNumber);
+  }, [allStops, selectedDayNumber]);
 
   const filteredDayStops = useMemo(() => {
     return dayStops.filter((stop) => {
@@ -164,8 +215,8 @@ export default function App() {
   }, [dayStops, selectedCategoryFilter, searchQuery, completedIds, favoriteIds]);
 
   // Overall Trip Completion Stats
-  const totalStopsCount = INITIAL_STOPS.length;
-  const totalCompletedCount = INITIAL_STOPS.filter((s) => completedIds.includes(s.id)).length;
+  const totalStopsCount = allStops.length;
+  const totalCompletedCount = allStops.filter((s) => completedIds.includes(s.id)).length;
   const dayCompletedCount = dayStops.filter((s) => completedIds.includes(s.id)).length;
   const dayProgressPercent = Math.round((dayCompletedCount / dayStops.length) * 100) || 0;
 
@@ -186,14 +237,17 @@ export default function App() {
         {/* ================= TAB 1: ITINERARY CHECKLIST ================= */}
         {activeTab === 'itinerary' && (
           <div className="space-y-4 sm:space-y-6">
+            {/* Plan Switcher */}
+            <PlanSwitcher plan={plan} onSelect={handleSelectPlan} />
+
             {/* Day Selector Navigation Carousel */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {DAYS_INFO.map((day) => {
+              {daysInfo.map((day) => {
                 const isSelected = day.dayNumber === selectedDayNumber;
-                const completedInThisDay = INITIAL_STOPS.filter(
+                const completedInThisDay = allStops.filter(
                   (s) => s.day === day.dayNumber && completedIds.includes(s.id)
                 ).length;
-                const totalInThisDay = INITIAL_STOPS.filter(
+                const totalInThisDay = allStops.filter(
                   (s) => s.day === day.dayNumber
                 ).length;
 
@@ -259,12 +313,12 @@ export default function App() {
               {/* Dedicated Weather Card with Icons & Hourly Scroller */}
               <WeatherWidget
                 weather={mergeWeather(currentDayInfo.weather, liveWeather)}
-                updatedAt={liveWeather?.days?.[selectedDayNumber] ? liveWeather.updatedAt : null}
+                updatedAt={liveWeather?.days?.[currentDayInfo.weather.dayNumber] ? liveWeather.updatedAt : null}
                 isOffline={isOffline}
               />
 
               {/* Day 1 Pass Start or Day 3 20:45 Alert Strip */}
-              {selectedDayNumber === 1 && (
+              {plan === 'main' && selectedDayNumber === 1 && (
                 <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 flex items-center justify-between gap-2">
                   <span className="font-medium">
                     🎟️ <strong>Saat 21:00 Hatırlatması:</strong> Venedik Santa Lucia iskelesinde 48h Pass’i ilk kez okutarak başlatın!
@@ -278,7 +332,7 @@ export default function App() {
                 </div>
               )}
 
-              {selectedDayNumber === 3 && (
+              {plan === 'main' && selectedDayNumber === 3 && (
                 <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center justify-between gap-2">
                   <span className="font-medium">
                     ⚠️ <strong>KRİTİK ALARM (20:45):</strong> 48h Pass 21:00’de bitiyor! Piazzale Roma’dan Mestre otobüsüne 21:00 öncesi binin.
@@ -366,7 +420,7 @@ export default function App() {
         {/* ================= TAB 2: MAP VIEW (DOWNLOADABLE OPENSTREETMAP LEAFLET) ================= */}
         {activeTab === 'map' && (
           <InteractiveMap
-            stops={INITIAL_STOPS}
+            stops={allStops}
             selectedDay={selectedDayNumber}
             onSelectDay={setSelectedDayNumber}
             onOpenStopDetail={(stop) => openDetail(stop)}

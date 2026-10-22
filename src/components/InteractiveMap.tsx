@@ -569,7 +569,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             >
               Tümü ({stops.length})
             </button>
-            {[1, 2, 3, 4].map((d) => (
+            {Array.from(new Set(stops.map((st) => st.day))).sort().map((d) => (
               <button
                 key={d}
                 onClick={() => onSelectDay(d)}
