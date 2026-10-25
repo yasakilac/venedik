@@ -1,10 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ChevronRight, RotateCcw, FlaskConical } from 'lucide-react';
+import { ChevronRight, FlaskConical, RotateCcw, ArrowRight } from 'lucide-react';
 import { CATEGORY_INFO, QUIZZES, Quiz, QuizCategory, QuizOption } from '../data/quizData';
+import { ALL_TRIVIA, TriviaSet } from '../data/triviaData';
+import { TriviaGame } from './TriviaGame';
+import { CoupleGame } from './CoupleGame';
+import {
+  BigButton,
+  GameShell,
+  OptionButton,
+  PLAYER_STYLES,
+  PlayerSetup,
+  TurnBanner,
+  initial,
+  shuffle,
+  useDualPick,
+} from './game/shared';
 
-// Şimdilik yayında olan kategoriler
 const ACTIVE_CATEGORIES: QuizCategory[] = ['kisilik', 'iliski', 'kokoloji'];
-
 const STORAGE_KEY = 'veneto_quiz_results_v1';
 
 type Saved = Record<string, { title: string; emoji: string }>;
@@ -27,20 +39,12 @@ function saveResult(id: string, value: { title: string; emoji: string }) {
   }
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 // ---- Hesaplama ----
 interface Computed {
   pct: Record<string, number>; // 0..1
   headline: { emoji: string; title: string; text: string };
-  bars: boolean; // yüzde çubukları gösterilsin mi
+  bars: boolean;
+  letters?: string; // yalnızca Jung tipi
   dimTexts?: { label: string; pct: number; text: string }[];
 }
 
@@ -67,7 +71,7 @@ function compute(quiz: Quiz, answers: QuizOption[]): Computed {
     const pick = (a: string, b: string) => (score[a] >= score[b] ? a : b);
     const code = pick('E', 'I') + pick('S', 'N') + pick('T', 'F') + pick('J', 'P');
     const r = quiz.results![code];
-    return { pct, bars: false, headline: { emoji: r.emoji, title: `${code} · ${r.title}`, text: r.text } };
+    return { pct, bars: false, letters: code, headline: { emoji: r.emoji, title: `${code} · ${r.title}`, text: r.text } };
   }
 
   if (quiz.mode === 'bars') {
@@ -98,24 +102,36 @@ function compute(quiz: Quiz, answers: QuizOption[]): Computed {
   } else if (quiz.mode === 'triad') {
     key = keys.filter((k) => pct[k] >= 0.55).join('') || 'none';
   }
-  const r = quiz.results![key];
-  return { pct, bars: true, headline: r };
+  return { pct, bars: true, headline: quiz.results![key] };
 }
 
-// ---- Bileşenler ----
-const Bar: React.FC<{ label: string; pct: number }> = ({ label, pct }) => (
-  <div>
-    <div className="flex justify-between text-xs text-slate-700 mb-1">
-      <span className="font-semibold">{label}</span>
-      <span className="tabular-nums">%{Math.round(pct * 100)}</span>
-    </div>
-    <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-      <div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.round(pct * 100)}%` }} />
-    </div>
-  </div>
-);
+// İki profilin benzerliği (0..100)
+function similarity(quiz: Quiz, a: Computed, b: Computed): number {
+  if (quiz.mode === 'pairs' && a.letters && b.letters) {
+    let same = 0;
+    for (let i = 0; i < 4; i++) if (a.letters[i] === b.letters[i]) same++;
+    return Math.round((same / 4) * 100);
+  }
+  const keys = Object.keys(quiz.dims);
+  const diff = keys.reduce((s, k) => s + Math.abs(a.pct[k] - b.pct[k]), 0) / keys.length;
+  return Math.round((1 - diff) * 100);
+}
 
-const QuizRunner: React.FC<{ quiz: Quiz; onExit: () => void; onDone: () => void }> = ({ quiz, onExit, onDone }) => {
+function similarityText(p: number): string {
+  if (p >= 80) return 'Çok benzer profiller: aynı dalga boyundasınız.';
+  if (p >= 60) return 'Benzer yönleriniz çok; farklılıklar tatlı bir denge kurar.';
+  if (p >= 40) return 'Birbirinizi tamamlayan farklı yönleriniz var.';
+  return 'Zıt kutuplar gibisiniz: birbirinizden çok şey öğrenebilirsiniz.';
+}
+
+// ---- Test akışı ----
+const QuizRun: React.FC<{ quiz: Quiz; names: string[]; onClose: () => void; onDone: () => void }> = ({
+  quiz,
+  names,
+  onClose,
+  onDone,
+}) => {
+  const n = names.length;
   const [run, setRun] = useState(0);
   const questions = useMemo(
     () => quiz.questions.map((q) => ({ ...q, o: shuffle(q.o) })),
@@ -124,175 +140,268 @@ const QuizRunner: React.FC<{ quiz: Quiz; onExit: () => void; onDone: () => void 
     [quiz, run]
   );
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<QuizOption[]>([]);
+  const [answers, setAnswers] = useState<QuizOption[][]>(() => Array.from({ length: n }, () => []));
+  const dual = useDualPick(n);
 
   const finished = idx >= questions.length;
-  const result = useMemo(() => (finished ? compute(quiz, answers) : null), [finished, quiz, answers]);
+  const results = useMemo(() => (finished ? answers.map((a) => compute(quiz, a)) : null), [finished, quiz, answers]);
 
   React.useEffect(() => {
-    if (result) {
-      saveResult(quiz.id, { title: result.headline.title, emoji: result.headline.emoji });
+    if (results && n === 1) {
+      saveResult(quiz.id, { title: results[0].headline.title, emoji: results[0].headline.emoji });
       onDone();
     }
     // yalnızca sonuç oluşunca kaydet
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  }, [results]);
+
+  const advance = () => {
+    const picked = dual.picks.map((p, pi) => questions[idx].o[p as number]);
+    setAnswers(answers.map((a, pi) => [...a, picked[pi]]));
+    dual.reset();
+    setIdx(idx + 1);
+  };
 
   const restart = () => {
-    setRun((r) => r + 1);
+    setRun(run + 1);
     setIdx(0);
-    setAnswers([]);
+    setAnswers(Array.from({ length: n }, () => []));
+    dual.reset();
   };
 
-  const back = () => {
-    if (idx === 0) return onExit();
-    setIdx(idx - 1);
-    setAnswers(answers.slice(0, -1));
-  };
-
-  return (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={finished ? onExit : back}
-        className="min-h-[44px] flex items-center gap-1.5 text-sm font-semibold text-slate-700 cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {finished ? 'Testlere dön' : idx === 0 ? 'Testlere dön' : 'Önceki soru'}
-      </button>
-
-      {!finished && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
-          <div>
-            <div className="flex justify-between text-[11px] font-semibold text-slate-500 mb-1.5">
-              <span>
-                {quiz.emoji} {quiz.title}
-              </span>
-              <span className="tabular-nums">
-                {idx + 1} / {questions.length}
-              </span>
-            </div>
-            <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-              <div className="h-full bg-amber-500 transition-all" style={{ width: `${(idx / questions.length) * 100}%` }} />
-            </div>
+  if (finished && results) {
+    const dimKeys = Object.keys(quiz.dims);
+    const showBars = results.some((r) => r.bars);
+    const sim = n === 2 ? similarity(quiz, results[0], results[1]) : null;
+    return (
+      <GameShell title={quiz.title} onClose={onClose}>
+        {results.map((r, p) => (
+          <div key={p} className={`rounded-3xl border-2 p-5 space-y-2 ${PLAYER_STYLES[p].card}`}>
+            {n > 1 && (
+              <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${PLAYER_STYLES[p].badge}`}>
+                  {initial(names[p])}
+                </span>
+                {names[p]}
+              </div>
+            )}
+            <div className="text-5xl">{r.headline.emoji}</div>
+            <h3 className="text-2xl font-bold font-serif-heading text-slate-900 leading-snug">{r.headline.title}</h3>
+            <p className="text-lg text-slate-800 leading-relaxed">{r.headline.text}</p>
           </div>
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">{questions[idx].q}</h3>
-          <div className="space-y-2">
-            {questions[idx].o.map((op) => (
-              <button
-                key={op.t}
-                type="button"
-                onClick={() => {
-                  setAnswers([...answers, op]);
-                  setIdx(idx + 1);
-                }}
-                className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 active:bg-amber-100 text-left text-sm text-slate-800 cursor-pointer transition-colors"
-              >
-                {op.t}
-              </button>
+        ))}
+
+        {sim !== null && (
+          <div className="rounded-3xl bg-slate-900 text-white p-5 text-center space-y-1">
+            <div className="text-sm font-semibold text-slate-300">Profil benzerliği</div>
+            <div className="text-5xl font-bold tabular-nums">%{sim}</div>
+            <p className="text-base text-slate-200">{similarityText(sim)}</p>
+          </div>
+        )}
+
+        {showBars && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Puanlar</h4>
+            {dimKeys.map((k) => (
+              <div key={k} className="space-y-1.5">
+                <div className="text-base font-semibold text-slate-900">{quiz.dims[k].label}</div>
+                {results.map((r, p) => (
+                  <div key={p} className="flex items-center gap-2">
+                    {n > 1 && <span className={`w-5 h-5 rounded-full text-[10px] flex items-center justify-center shrink-0 ${PLAYER_STYLES[p].badge}`}>{initial(names[p])}</span>}
+                    <div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div className={`h-full rounded-full ${PLAYER_STYLES[p].bar}`} style={{ width: `${Math.round(r.pct[k] * 100)}%` }} />
+                    </div>
+                    <span className="w-12 text-right text-sm tabular-nums text-slate-700">%{Math.round(r.pct[k] * 100)}</span>
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {finished && result && (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-5 sm:p-6 shadow-sm space-y-2">
-            <div className="text-4xl">{result.headline.emoji}</div>
-            <h3 className="text-xl font-bold font-serif-heading">{result.headline.title}</h3>
-            <p className="text-sm text-slate-200 leading-relaxed">{result.headline.text}</p>
-          </div>
-
-          {result.bars && (
-            <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 space-y-3 shadow-sm">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Puanların</h4>
-              {Object.keys(quiz.dims).map((k) => (
-                <Bar key={k} label={quiz.dims[k].label} pct={result.pct[k]} />
-              ))}
-              {result.dimTexts && (
-                <ul className="space-y-2 pt-1">
-                  {result.dimTexts.map((d) => (
-                    <li key={d.label} className="text-xs text-slate-700 leading-relaxed">
+        {results.map(
+          (r, p) =>
+            r.dimTexts && (
+              <details key={p} className="bg-white rounded-3xl border border-slate-200 p-5">
+                <summary className="text-base font-bold text-slate-900 cursor-pointer min-h-[40px] flex items-center">
+                  {n > 1 ? `${names[p]} için ayrıntılı yorum` : 'Ayrıntılı yorum'}
+                </summary>
+                <ul className="space-y-3 pt-2">
+                  {r.dimTexts.map((d) => (
+                    <li key={d.label} className="text-base text-slate-800 leading-relaxed">
                       <strong>{d.label}:</strong> {d.text}
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          )}
+              </details>
+            )
+        )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-950 space-y-1.5">
-            <div className="font-bold flex items-center gap-1.5">
-              <FlaskConical className="w-4 h-4" /> Bilimsel dayanak ve sınırları
-            </div>
-            <p className="leading-relaxed">{quiz.basis}</p>
-            <p className="leading-relaxed">Bu test eğlence ve kendini tanıma amaçlıdır; tanı koymaz ve profesyonel değerlendirme yerine geçmez.</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-950 space-y-2">
+          <div className="font-bold flex items-center gap-1.5 text-base">
+            <FlaskConical className="w-5 h-5" /> Bilimsel dayanak ve sınırları
           </div>
-
-          <button
-            type="button"
-            onClick={restart}
-            className="w-full min-h-[48px] rounded-2xl bg-slate-900 text-white text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" /> Testi yeniden çöz
-          </button>
+          <p className="leading-relaxed">{quiz.basis}</p>
+          <p className="leading-relaxed">Bu test eğlence ve kendini tanıma amaçlıdır; tanı koymaz ve profesyonel değerlendirme yerine geçmez.</p>
         </div>
-      )}
-    </div>
-  );
-};
 
-export const QuizHub: React.FC = () => {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [saved, setSaved] = useState<Saved>(() => loadSaved());
-  const quiz = QUIZZES.find((q) => q.id === activeId) || null;
-
-  if (quiz) {
-    return (
-      <QuizRunner
-        key={quiz.id}
-        quiz={quiz}
-        onExit={() => setActiveId(null)}
-        onDone={() => setSaved(loadSaved())}
-      />
+        <div className="space-y-3">
+          <BigButton onClick={restart} tone="amber">
+            <RotateCcw className="w-5 h-5" /> Yeniden çöz
+          </BigButton>
+          <BigButton onClick={onClose} tone="light">
+            Menüye dön
+          </BigButton>
+        </div>
+      </GameShell>
     );
   }
 
+  const cur = questions[idx];
   return (
-    <div className="space-y-5">
-      <p className="text-xs text-slate-600 px-1 leading-relaxed">
-        Eğlenceli senaryolarla kısa testler. Hepsi telefonunda hesaplanır, internet gerekmez. Sonuçlar eğlence amaçlıdır.
+    <GameShell
+      title={`${quiz.emoji} ${quiz.title}`}
+      onClose={onClose}
+      progress={idx / questions.length}
+      right={
+        <span className="text-sm font-semibold text-slate-300 tabular-nums">
+          {idx + 1}/{questions.length}
+        </span>
+      }
+      footer={
+        dual.done ? (
+          <BigButton onClick={advance}>
+            {idx + 1 >= questions.length ? 'Sonuçları gör' : 'İlerle'} <ArrowRight className="w-5 h-5" />
+          </BigButton>
+        ) : undefined
+      }
+    >
+      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-snug pt-1">{cur.q}</h3>
+      <TurnBanner
+        names={names}
+        active={dual.active}
+        canUndo={dual.picks.some((p) => p !== null)}
+        onUndo={dual.undo}
+        doneText={n > 1 ? 'İkiniz de işaretlediniz' : 'İşaretlendi'}
+      />
+      <div className="space-y-3">
+        {cur.o.map((op, i) => (
+          <OptionButton
+            key={op.t}
+            label={op.t}
+            names={names}
+            pickedBy={dual.picks.map((p, pi) => (p === i ? pi : -1)).filter((pi) => pi >= 0)}
+            disabled={dual.done}
+            onClick={() => dual.pick(i)}
+          />
+        ))}
+      </div>
+    </GameShell>
+  );
+};
+
+const QuizGame: React.FC<{ quiz: Quiz; onClose: () => void; onDone: () => void }> = ({ quiz, onClose, onDone }) => {
+  const [names, setNames] = useState<string[] | null>(null);
+  if (!names) {
+    return (
+      <PlayerSetup
+        title={quiz.title}
+        emoji={quiz.emoji}
+        intro="Her soruyu sırayla işaretleyin: 1. kişi pembe, 2. kişi mavi. İkiniz de işaretleyince ilerleyin. Sonunda iki sonuç yan yana görünür."
+        onStart={setNames}
+        onClose={onClose}
+      />
+    );
+  }
+  return <QuizRun quiz={quiz} names={names} onClose={onClose} onDone={onDone} />;
+};
+
+// ---- Menü ----
+type Active = { kind: 'quiz'; id: string } | { kind: 'trivia'; id: string } | { kind: 'couple' } | null;
+
+const Card: React.FC<{ emoji: string; title: string; blurb: string; extra?: string; onClick: () => void }> = ({
+  emoji,
+  title,
+  blurb,
+  extra,
+  onClick,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full min-h-[76px] p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-amber-300 text-left flex items-center gap-3 cursor-pointer"
+  >
+    <span className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-3xl shrink-0">{emoji}</span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-base font-bold text-slate-900">{title}</span>
+      <span className="block text-xs text-slate-600 leading-snug">{blurb}</span>
+      {extra && <span className="block text-xs font-semibold text-emerald-700 mt-0.5 truncate">{extra}</span>}
+    </span>
+    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+  </button>
+);
+
+export const QuizHub: React.FC = () => {
+  const [active, setActive] = useState<Active>(null);
+  const [saved, setSaved] = useState<Saved>(() => loadSaved());
+  const close = () => setActive(null);
+
+  if (active?.kind === 'quiz') {
+    const quiz = QUIZZES.find((q) => q.id === active.id)!;
+    return <QuizGame key={quiz.id} quiz={quiz} onClose={close} onDone={() => setSaved(loadSaved())} />;
+  }
+  if (active?.kind === 'trivia') {
+    const set: TriviaSet = ALL_TRIVIA.find((t) => t.id === active.id)!;
+    return <TriviaGame key={set.id} set={set} onClose={close} />;
+  }
+  if (active?.kind === 'couple') return <CoupleGame onClose={close} />;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-slate-600 px-1 leading-relaxed">
+        Testlerin ve yarışmaların hepsi 1 veya 2 kişi oynanır, telefonda çalışır, internet gerekmez. Test sonuçları eğlence amaçlıdır.
       </p>
+
+      <section className="space-y-2">
+        <div className="px-1">
+          <h3 className="text-base font-bold text-slate-900">💞 Bizim Yarışma</h3>
+          <p className="text-xs text-slate-500">Çifte özel</p>
+        </div>
+        <Card
+          emoji="🗺️"
+          title="Beni Ne Kadar Tanıyorsun?"
+          blurb="Gizlice cevap seç, diğeri tahmin etsin. Kaybeden ceza kartı çeker."
+          onClick={() => setActive({ kind: 'couple' })}
+        />
+      </section>
+
+      <section className="space-y-2">
+        <div className="px-1">
+          <h3 className="text-base font-bold text-slate-900">🏆 Gezi Yarışmaları</h3>
+          <p className="text-xs text-slate-500">Bilgi ve görsel mekan yarışmaları</p>
+        </div>
+        {ALL_TRIVIA.map((t) => (
+          <Card key={t.id} emoji={t.emoji} title={t.title} blurb={t.blurb} onClick={() => setActive({ kind: 'trivia', id: t.id })} />
+        ))}
+      </section>
+
       {ACTIVE_CATEGORIES.map((cat) => (
         <section key={cat} className="space-y-2">
           <div className="px-1">
-            <h3 className="text-sm font-bold text-slate-900">
+            <h3 className="text-base font-bold text-slate-900">
               {CATEGORY_INFO[cat].emoji} {CATEGORY_INFO[cat].label}
             </h3>
-            <p className="text-[11px] text-slate-500">{CATEGORY_INFO[cat].blurb}</p>
+            <p className="text-xs text-slate-500">{CATEGORY_INFO[cat].blurb}</p>
           </div>
           {QUIZZES.filter((q) => q.category === cat).map((q) => (
-            <button
+            <Card
               key={q.id}
-              type="button"
-              onClick={() => {
-                setActiveId(q.id);
-                window.scrollTo({ top: 0 });
-              }}
-              className="w-full min-h-[64px] p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-amber-300 text-left flex items-center gap-3 cursor-pointer"
-            >
-              <span className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-2xl shrink-0">{q.emoji}</span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold text-slate-900">{q.title}</span>
-                <span className="block text-[11px] text-slate-600 leading-snug">{q.blurb}</span>
-                {saved[q.id] && (
-                  <span className="block text-[11px] font-semibold text-emerald-700 mt-0.5 truncate">
-                    Son sonuç: {saved[q.id].emoji} {saved[q.id].title}
-                  </span>
-                )}
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-            </button>
+              emoji={q.emoji}
+              title={q.title}
+              blurb={q.blurb}
+              extra={saved[q.id] ? `Son sonuç: ${saved[q.id].emoji} ${saved[q.id].title}` : undefined}
+              onClick={() => setActive({ kind: 'quiz', id: q.id })}
+            />
           ))}
         </section>
       ))}

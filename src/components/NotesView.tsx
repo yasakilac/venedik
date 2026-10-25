@@ -77,7 +77,7 @@ export const NotesView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Notlar menüsü">
-        {([['notes', 'Notlar & Rehber'], ['tests', '🧪 Eğlenceli Testler']] as const).map(([id, label]) => (
+        {([['notes', 'Notlar & Rehber'], ['tests', '🎮 Testler & Yarışmalar']] as const).map(([id, label]) => (
           <button
             key={id}
             type="button"
