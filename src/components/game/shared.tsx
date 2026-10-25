@@ -108,25 +108,47 @@ export const BigButton: React.FC<{
   </button>
 );
 
-// İsim girişi: 1. kişi pembe, 2. kişi mavi
+// Mod seçimi + isim girişi: 1. kişi pembe, 2. kişi mavi
+const MODE_KEY = 'veneto_mode_v1';
+
 export const PlayerSetup: React.FC<{
   title: string;
   emoji: string;
   intro: string;
   allowSolo?: boolean;
+  bestScore?: number | null; // tekli modda gösterilecek rekor
   onStart: (names: string[]) => void;
   onClose: () => void;
-}> = ({ title, emoji, intro, allowSolo = true, onStart, onClose }) => {
+}> = ({ title, emoji, intro, allowSolo = true, bestScore, onStart, onClose }) => {
   const saved = loadNames();
   const [a, setA] = useState(saved[0]);
   const [b, setB] = useState(saved[1]);
+  const [mode, setMode] = useState<'solo' | 'duo'>(() => {
+    if (!allowSolo) return 'duo';
+    try {
+      return localStorage.getItem(MODE_KEY) === 'solo' ? 'solo' : 'duo';
+    } catch {
+      return 'duo';
+    }
+  });
 
-  const start = (n: number) => {
+  const choose = (m: 'solo' | 'duo') => {
+    setMode(m);
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {
+      // yoksay
+    }
+  };
+
+  const start = () => {
     const n1 = a.trim() || '1. Kişi';
     const n2 = b.trim() || '2. Kişi';
     saveNames([a.trim(), b.trim()]);
-    onStart(n === 1 ? [n1] : [n1, n2]);
+    onStart(mode === 'solo' ? [n1] : [n1, n2]);
   };
+
+  const fields: [string, (v: string) => void, number][] = mode === 'solo' ? [[a, setA, 0]] : [[a, setA, 0], [b, setB, 1]];
 
   return (
     <GameShell title={title} onClose={onClose}>
@@ -136,39 +158,57 @@ export const PlayerSetup: React.FC<{
         <p className="text-base text-slate-600 leading-relaxed">{intro}</p>
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        {([
+          ['solo', '👤', 'Tekli mod', 'Tek başına, rekorunu kır'],
+          ['duo', '👥', 'Çiftli mod', 'Pembe ve mavi sırayla'],
+        ] as const).map(([id, em, label, hint]) => {
+          const disabled = id === 'solo' && !allowSolo;
+          return (
+            <button
+              key={id}
+              type="button"
+              disabled={disabled}
+              onClick={() => choose(id)}
+              className={`min-h-[96px] rounded-2xl border-2 p-3 text-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                mode === id ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'
+              }`}
+            >
+              <div className="text-3xl">{em}</div>
+              <div className="text-base font-bold text-slate-900">{label}</div>
+              <div className="text-[11px] text-slate-500 leading-tight">{disabled ? 'Bu oyun iki kişilik' : hint}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {mode === 'solo' && bestScore !== undefined && bestScore !== null && (
+        <div className="text-center text-base font-semibold text-amber-800">🏅 Rekorun: {bestScore}</div>
+      )}
+
       <div className="space-y-3">
-        {[
-          [a, setA, 0],
-          [b, setB, 1],
-        ].map(([val, set, i]) => (
-          <label key={i as number} className="block">
+        {fields.map(([val, set, i]) => (
+          <label key={i} className="block">
             <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
-              <span className={`w-3.5 h-3.5 rounded-full ${PLAYER_STYLES[i as number].dot}`} />
-              {(i as number) + 1}. kişi ({PLAYER_STYLES[i as number].label})
+              <span className={`w-3.5 h-3.5 rounded-full ${PLAYER_STYLES[i].dot}`} />
+              {mode === 'solo' ? 'İsmin' : `${i + 1}. kişi (${PLAYER_STYLES[i].label})`}
             </span>
             <input
-              value={val as string}
-              onChange={(e) => (set as (v: string) => void)(e.target.value)}
-              placeholder={(i as number) === 0 ? 'İsim' : 'İsim'}
+              value={val}
+              onChange={(e) => set(e.target.value)}
+              placeholder="İsim"
               maxLength={14}
               className={`w-full min-h-[60px] px-4 text-xl rounded-2xl border-2 bg-white focus:outline-none ${
-                (i as number) === 0 ? 'border-pink-300 focus:border-pink-500' : 'border-blue-300 focus:border-blue-500'
+                i === 0 ? 'border-pink-300 focus:border-pink-500' : 'border-blue-300 focus:border-blue-500'
               }`}
             />
           </label>
         ))}
       </div>
 
-      <div className="space-y-3 pt-1">
-        <BigButton onClick={() => start(2)} tone="amber">
-          <Users className="w-6 h-6" /> İki kişi başlayalım
-        </BigButton>
-        {allowSolo && (
-          <BigButton onClick={() => start(1)} tone="light">
-            <User className="w-6 h-6" /> Tek kişi oynayacağım
-          </BigButton>
-        )}
-      </div>
+      <BigButton onClick={start} tone="amber">
+        {mode === 'solo' ? <User className="w-6 h-6" /> : <Users className="w-6 h-6" />} Başla
+      </BigButton>
     </GameShell>
   );
 };
@@ -274,3 +314,106 @@ export function shuffle<T>(arr: T[]): T[] {
   }
   return a;
 }
+
+
+// Sayıyı yumuşakça yukarı sayar
+export function useCountUp(target: number, ms = 600, initial?: number): number {
+  const [val, setVal] = useState(initial ?? target);
+  const from = React.useRef(initial ?? target);
+  React.useEffect(() => {
+    const start = performance.now();
+    const base = from.current;
+    if (base === target) return;
+    let raf = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / ms);
+      const v = Math.round(base + (target - base) * k);
+      setVal(v);
+      if (k < 1) raf = requestAnimationFrame(tick);
+      else from.current = target;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return val;
+}
+
+const ScoreRow: React.FC<{ name: string; p: number; score: number; total: number; gain: number; leader: boolean }> = ({
+  name,
+  p,
+  score,
+  total,
+  gain,
+  leader,
+}) => {
+  const shown = useCountUp(score, 700, score - gain);
+  // Çubuk önceki değerden yeni değere doğru uzar
+  const pctOf = (v: number) => (total ? Math.round((v / total) * 100) : 0);
+  const [width, setWidth] = useState(pctOf(score - gain));
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => setWidth(pctOf(score)));
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score, total]);
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-base font-bold shrink-0 ${PLAYER_STYLES[p].badge}`}>
+        {initial(name)}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between text-base font-bold text-slate-900">
+          <span className="truncate">
+            {name} {leader && '👑'}
+          </span>
+          <span className="flex items-center gap-2 tabular-nums">
+            {gain > 0 && <span className="anim-gain text-emerald-600 text-lg">+{gain}</span>}
+            <span className="text-xl">{shown}</span>
+          </span>
+        </div>
+        <div className="h-3 rounded-full bg-slate-200 overflow-hidden mt-1">
+          <div
+            className={`h-full rounded-full ${PLAYER_STYLES[p].bar} transition-all duration-700 ease-out`}
+            style={{ width: `${width}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Her sorudan sonra çıkan animasyonlu skor tablosu
+export const ScoreBoard: React.FC<{
+  names: string[];
+  scores: number[];
+  gains: number[];
+  total: number;
+  answered: number;
+  best?: number | null;
+}> = ({ names, scores, gains, total, answered, best }) => {
+  const max = Math.max(...scores);
+  const leaders = scores.filter((s) => s === max).length;
+  return (
+    <div className="anim-board rounded-3xl bg-white border-2 border-slate-200 p-4 space-y-3 shadow-sm">
+      <div className="flex items-center justify-between text-sm font-bold uppercase tracking-wider text-slate-600">
+        <span>Skor tablosu</span>
+        <span className="tabular-nums">
+          {answered}/{total} soru
+        </span>
+      </div>
+      {names.map((name, p) => (
+        <ScoreRow
+          key={p}
+          name={name}
+          p={p}
+          score={scores[p]}
+          total={total}
+          gain={gains[p]}
+          leader={names.length > 1 && max > 0 && leaders === 1 && scores[p] === max}
+        />
+      ))}
+      {names.length === 1 && best !== undefined && best !== null && (
+        <div className="text-sm text-slate-600">🏅 Rekor: {best}</div>
+      )}
+    </div>
+  );
+};

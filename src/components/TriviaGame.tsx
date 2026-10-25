@@ -1,12 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, RotateCcw, Trophy } from 'lucide-react';
+import { ArrowRight, ListChecks, RotateCcw, Trophy } from 'lucide-react';
 import { TriviaSet } from '../data/triviaData';
+import { HistoryEntry, ReviewItem, addHistory, bestSolo, newEntryId } from '../utils/gameHistory';
+import { ReviewScreen } from './GameReview';
 import {
   BigButton,
   GameShell,
   OptionButton,
   PLAYER_STYLES,
   PlayerSetup,
+  ScoreBoard,
   TurnBanner,
   initial,
   shuffle,
@@ -36,24 +39,76 @@ const Run: React.FC<{ set: TriviaSet; names: string[]; onClose: () => void }> = 
     [set, run]
   );
   const [idx, setIdx] = useState(0);
-  const [scores, setScores] = useState<number[]>(() => Array(n).fill(0));
+  const [scores, setScores] = useState<number[]>(() => Array(n).fill(0)); // önceki sorulardan gelen puan
+  const [log, setLog] = useState<ReviewItem[]>([]);
+  const [entry, setEntry] = useState<HistoryEntry | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [prevBest, setPrevBest] = useState<number | null>(null);
   const dual = useDualPick(n);
 
   const finished = idx >= questions.length;
   const cur = questions[idx];
+  const revealed = !finished && dual.done;
+  // Cevaplar işaretlenince bu sorunun puanı hemen skor tablosuna yansır
+  const gains = revealed ? dual.picks.map((p) => (cur.opts[p as number]?.ok ? 1 : 0)) : Array(n).fill(0);
+  const shownScores = scores.map((s, p) => s + gains[p]);
+
+  const boardRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (revealed) {
+      const t = setTimeout(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+      return () => clearTimeout(t);
+    }
+  }, [revealed, idx]);
 
   const next = () => {
-    setScores(scores.map((s, p) => s + (cur.opts[dual.picks[p] as number]?.ok ? 1 : 0)));
+    const correct = cur.opts.find((o) => o.ok)!.t;
+    setLog([
+      ...log,
+      {
+        q: cur.q,
+        correct,
+        note: cur.info,
+        lines: dual.picks.map((p, pi) => ({ p: pi, text: cur.opts[p as number].t, ok: cur.opts[p as number].ok })),
+      },
+    ]);
+    setScores(shownScores);
     dual.reset();
     setIdx(idx + 1);
   };
+
+  // Oyun bitince geçmişe kaydet
+  React.useEffect(() => {
+    if (!finished || entry) return;
+    setPrevBest(n === 1 ? bestSolo(set.id) : null);
+    const e: HistoryEntry = {
+      id: newEntryId(),
+      gameId: set.id,
+      title: set.title,
+      emoji: set.emoji,
+      at: Date.now(),
+      names,
+      scores,
+      total: questions.length,
+      summary: [],
+      items: log,
+    };
+    addHistory(e);
+    setEntry(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   const restart = () => {
     setRun(run + 1);
     setIdx(0);
     setScores(Array(n).fill(0));
+    setLog([]);
+    setEntry(null);
+    setReviewing(false);
     dual.reset();
   };
+
+  if (finished && reviewing && entry) return <ReviewScreen entry={entry} onClose={() => setReviewing(false)} />;
 
   if (finished) {
     const best = Math.max(...scores);
@@ -85,10 +140,18 @@ const Run: React.FC<{ set: TriviaSet; names: string[]; onClose: () => void }> = 
             </div>
           ))}
         </div>
+        {n === 1 && (
+          <div className="text-center text-lg font-semibold text-amber-800">
+            {prevBest === null ? '🏅 İlk skorun kaydedildi' : scores[0] > prevBest ? `🎉 Yeni rekor! (önceki: ${prevBest})` : `🏅 Rekorun: ${prevBest}`}
+          </div>
+        )}
         {set.credit && <p className="text-[11px] text-slate-500 leading-relaxed break-words">{set.credit}</p>}
         <div className="space-y-3">
           <BigButton onClick={restart} tone="amber">
             <RotateCcw className="w-5 h-5" /> Tekrar oyna
+          </BigButton>
+          <BigButton onClick={() => setReviewing(true)} tone="light">
+            <ListChecks className="w-5 h-5" /> Soruları ve cevapları incele
           </BigButton>
           <BigButton onClick={onClose} tone="light">
             Menüye dön
@@ -98,7 +161,6 @@ const Run: React.FC<{ set: TriviaSet; names: string[]; onClose: () => void }> = 
     );
   }
 
-  const revealed = dual.done;
   return (
     <GameShell
       title={set.title}
@@ -122,7 +184,7 @@ const Run: React.FC<{ set: TriviaSet; names: string[]; onClose: () => void }> = 
           {names.map((name, p) => (
             <span key={p} className={`flex-1 rounded-xl px-3 py-1.5 text-sm font-bold flex items-center justify-between ${PLAYER_STYLES[p].badge}`}>
               <span className="truncate">{name}</span>
-              <span className="tabular-nums">{scores[p]}</span>
+              <span className="tabular-nums">{shownScores[p]}</span>
             </span>
           ))}
         </div>
@@ -160,6 +222,12 @@ const Run: React.FC<{ set: TriviaSet; names: string[]; onClose: () => void }> = 
       </div>
 
       {revealed && (
+        <div ref={boardRef}>
+          <ScoreBoard names={names} scores={shownScores} gains={gains} total={questions.length} answered={idx + 1} best={bestSolo(set.id)} />
+        </div>
+      )}
+
+      {revealed && (
         <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
           <div className="space-y-1">
             {names.map((name, p) => {
@@ -187,6 +255,7 @@ export const TriviaGame: React.FC<{ set: TriviaSet; onClose: () => void }> = ({ 
         title={set.title}
         emoji={set.emoji}
         intro="Her soruyu sırayla işaretleyin: 1. kişi pembe, 2. kişi mavi. İkiniz de işaretleyince doğru cevap ve bilgi gösterilir."
+        bestScore={bestSolo(set.id)}
         onStart={setNames}
         onClose={onClose}
       />

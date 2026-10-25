@@ -65,3 +65,19 @@ input, textarea, select { font-size: max(16px, 1em); } /* iOS odaklanınca otoma
   position: absolute; left: 24px; top: 24px; width: 16px; height: 16px; border-radius: 9999px;
   background: #2563eb; border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35), 0 1px 4px rgba(0,0,0,0.4);
 }
+
+/* Skor tablosu animasyonları */
+@keyframes gain-pop {
+  0% { transform: scale(0.3) translateY(8px); opacity: 0; }
+  40% { transform: scale(1.35) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes board-in {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.anim-gain { animation: gain-pop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.anim-board { animation: board-in 0.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-gain, .anim-board { animation: none; }
+}

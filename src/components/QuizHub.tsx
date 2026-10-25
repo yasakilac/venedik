@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronRight, FlaskConical, RotateCcw, ArrowRight } from 'lucide-react';
+import { ChevronRight, FlaskConical, RotateCcw, ArrowRight, ListChecks } from 'lucide-react';
 import { CATEGORY_INFO, QUIZZES, Quiz, QuizCategory, QuizOption } from '../data/quizData';
 import { ALL_TRIVIA, TriviaSet } from '../data/triviaData';
 import { TriviaGame } from './TriviaGame';
 import { CoupleGame } from './CoupleGame';
+import { HistoryScreen, ReviewScreen } from './GameReview';
+import { HistoryEntry, addHistory, loadHistory, newEntryId } from '../utils/gameHistory';
 import {
   BigButton,
   GameShell,
@@ -142,9 +144,36 @@ const QuizRun: React.FC<{ quiz: Quiz; names: string[]; onClose: () => void; onDo
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<QuizOption[][]>(() => Array.from({ length: n }, () => []));
   const dual = useDualPick(n);
+  const [entry, setEntry] = useState<HistoryEntry | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   const finished = idx >= questions.length;
   const results = useMemo(() => (finished ? answers.map((a) => compute(quiz, a)) : null), [finished, quiz, answers]);
+
+  // Bitince soru-cevapları ve sonuçları geçmişe kaydet (çevrimdışı incelenebilir)
+  React.useEffect(() => {
+    if (!results || entry) return;
+    const sim = n === 2 ? similarity(quiz, results[0], results[1]) : null;
+    const e: HistoryEntry = {
+      id: newEntryId(),
+      gameId: quiz.id,
+      title: quiz.title,
+      emoji: quiz.emoji,
+      at: Date.now(),
+      names,
+      summary: [
+        ...results.map((r, p) => `${names[p]}: ${r.headline.emoji} ${r.headline.title}`),
+        ...(sim !== null ? [`Profil benzerliği: %${sim}`] : []),
+      ],
+      items: questions.map((q, i) => ({
+        q: q.q,
+        lines: answers.map((a, p) => ({ p, text: a[i]?.t ?? '' })),
+      })),
+    };
+    addHistory(e);
+    setEntry(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
 
   React.useEffect(() => {
     if (results && n === 1) {
@@ -166,8 +195,12 @@ const QuizRun: React.FC<{ quiz: Quiz; names: string[]; onClose: () => void; onDo
     setRun(run + 1);
     setIdx(0);
     setAnswers(Array.from({ length: n }, () => []));
+    setEntry(null);
+    setReviewing(false);
     dual.reset();
   };
+
+  if (finished && reviewing && entry) return <ReviewScreen entry={entry} onClose={() => setReviewing(false)} />;
 
   if (finished && results) {
     const dimKeys = Object.keys(quiz.dims);
@@ -249,6 +282,9 @@ const QuizRun: React.FC<{ quiz: Quiz; names: string[]; onClose: () => void; onDo
           <BigButton onClick={restart} tone="amber">
             <RotateCcw className="w-5 h-5" /> Yeniden çöz
           </BigButton>
+          <BigButton onClick={() => setReviewing(true)} tone="light">
+            <ListChecks className="w-5 h-5" /> Soruları ve cevapları incele
+          </BigButton>
           <BigButton onClick={onClose} tone="light">
             Menüye dön
           </BigButton>
@@ -307,7 +343,7 @@ const QuizGame: React.FC<{ quiz: Quiz; onClose: () => void; onDone: () => void }
       <PlayerSetup
         title={quiz.title}
         emoji={quiz.emoji}
-        intro="Her soruyu sırayla işaretleyin: 1. kişi pembe, 2. kişi mavi. İkiniz de işaretleyince ilerleyin. Sonunda iki sonuç yan yana görünür."
+        intro="Çiftli modda her soruyu sırayla işaretleyin: 1. kişi pembe, 2. kişi mavi. Sonunda iki sonuç ve benzerlik çıkar."
         onStart={setNames}
         onClose={onClose}
       />
@@ -317,7 +353,7 @@ const QuizGame: React.FC<{ quiz: Quiz; onClose: () => void; onDone: () => void }
 };
 
 // ---- Menü ----
-type Active = { kind: 'quiz'; id: string } | { kind: 'trivia'; id: string } | { kind: 'couple' } | null;
+type Active = { kind: 'quiz'; id: string } | { kind: 'trivia'; id: string } | { kind: 'couple' } | { kind: 'history' } | null;
 
 const Card: React.FC<{ emoji: string; title: string; blurb: string; extra?: string; onClick: () => void }> = ({
   emoji,
@@ -355,12 +391,20 @@ export const QuizHub: React.FC = () => {
     return <TriviaGame key={set.id} set={set} onClose={close} />;
   }
   if (active?.kind === 'couple') return <CoupleGame onClose={close} />;
+  if (active?.kind === 'history') return <HistoryScreen onClose={close} />;
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600 px-1 leading-relaxed">
         Testlerin ve yarışmaların hepsi 1 veya 2 kişi oynanır, telefonda çalışır, internet gerekmez. Test sonuçları eğlence amaçlıdır.
       </p>
+
+      <Card
+        emoji="📜"
+        title="Geçmiş sonuçlar"
+        blurb={`Soruları, cevapları ve puanları internetsiz incele (${loadHistory().length} kayıt)`}
+        onClick={() => setActive({ kind: 'history' })}
+      />
 
       <section className="space-y-2">
         <div className="px-1">
