@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, EyeOff, RotateCcw } from 'lucide-react';
+import { ArrowRight, EyeOff, ListChecks, RotateCcw } from 'lucide-react';
+import { HistoryEntry, ReviewItem, addHistory, newEntryId } from '../utils/gameHistory';
+import { ReviewScreen } from './GameReview';
 import { BigButton, GameShell, OptionButton, PLAYER_STYLES, PlayerSetup, initial, shuffle } from './game/shared';
 
 interface CQ {
@@ -46,16 +48,31 @@ const Run: React.FC<{ names: string[]; onClose: () => void }> = ({ names, onClos
   const [answer, setAnswer] = useState<number | null>(null);
   const [guess, setGuess] = useState<number | null>(null);
   const [points, setPoints] = useState<number[]>([0, 0]);
+  const [log, setLog] = useState<ReviewItem[]>([]);
+  const [entry, setEntry] = useState<HistoryEntry | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const forfeit = useMemo(() => FORFEITS[Math.floor(Math.random() * FORFEITS.length)], [run]);
 
   const finished = idx >= qs.length;
+  const q0 = qs[Math.min(idx, qs.length - 1)];
   const asker = idx % 2;
   const guesser = 1 - asker;
 
   const next = () => {
-    if (answer !== null && guess === answer) {
+    const hit = answer !== null && guess === answer;
+    if (hit) {
       setPoints(points.map((p, i) => (i === guesser ? p + 1 : p)));
     }
+    setLog([
+      ...log,
+      {
+        q: q0.q,
+        lines: [
+          { p: asker, text: `Gerçek cevap: ${q0.o[answer as number]}` },
+          { p: guesser, text: `Tahmin: ${q0.o[guess as number]}`, ok: hit },
+        ],
+      },
+    ]);
     setAnswer(null);
     setGuess(null);
     setPhase('ask');
@@ -69,7 +86,32 @@ const Run: React.FC<{ names: string[]; onClose: () => void }> = ({ names, onClos
     setAnswer(null);
     setGuess(null);
     setPoints([0, 0]);
+    setLog([]);
+    setEntry(null);
+    setReviewing(false);
   };
+
+  React.useEffect(() => {
+    if (!finished || entry) return;
+    const total = points[0] + points[1];
+    const e: HistoryEntry = {
+      id: newEntryId(),
+      gameId: 'couple',
+      title: 'Beni Ne Kadar Tanıyorsun?',
+      emoji: '💞',
+      at: Date.now(),
+      names,
+      scores: points,
+      total: qs.length / 2,
+      summary: [`Uyum: %${Math.round((total / qs.length) * 100)}`],
+      items: log,
+    };
+    addHistory(e);
+    setEntry(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
+
+  if (finished && reviewing && entry) return <ReviewScreen entry={entry} onClose={() => setReviewing(false)} />;
 
   if (finished) {
     const total = points[0] + points[1];
@@ -110,6 +152,9 @@ const Run: React.FC<{ names: string[]; onClose: () => void }> = ({ names, onClos
         <div className="space-y-3">
           <BigButton onClick={restart} tone="amber">
             <RotateCcw className="w-5 h-5" /> Tekrar oyna
+          </BigButton>
+          <BigButton onClick={() => setReviewing(true)} tone="light">
+            <ListChecks className="w-5 h-5" /> Soruları ve cevapları incele
           </BigButton>
           <BigButton onClick={onClose} tone="light">
             Menüye dön
