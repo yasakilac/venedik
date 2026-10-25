@@ -1,5 +1,6 @@
 import { DayInfo, ItineraryStop } from '../types';
 import { WEATHER_FORECAST } from './weatherData';
+import { OFFLINE_TRANSIT_ROUTES } from './transitData';
 
 // Alternatif plan: 3 gün, Lido merkezli, ücretli kapalı müze yok.
 // Hava durumu anahtarları (dayNumber) ana plandaki 22-23-24 Ekim ile aynıdır; canlı hava durumu doğru güne eşleşir.
@@ -54,6 +55,19 @@ export const ALT_DAYS_INFO: DayInfo[] = [
       rainStrategy: 'Yağmurda bisikletten inip Padova’nın kemerli kaldırımları altında yürüyün.',
       porticiAdvice: 'Padova’da 25 km’den uzun portici var; ıslanmadan şehir merkezini dolaşabilirsiniz.',
     },
+  },
+  {
+    dayNumber: 4,
+    dateStr: '25 Ekim Pazar',
+    dayName: 'Pazar',
+    title: 'Mestre & Havalimanı',
+    subtitle: 'Lido’dan Mestre’ye geçiş, son mola ve Marco Polo Havalimanı’na otobüs',
+    weatherTitle: 'Serin ve Açık (tahmini)',
+    weatherDescription: 'Seyahat günü: valizlerle kısa mesafe, zamana güvenli pay.',
+    rainStrategy: 'Mestre’de kapalı bir kafede beklemek en güvenli çözümdür.',
+    transportAdvice: 'Pass bitti: tek yön bilet alın. Havalimanı otobüsü (ATVO 35B ya da ACTV 15) için bilet fiyatını atvo.it veya ACTV’den teyit edin.',
+    colorTheme: 'from-slate-800 to-zinc-950',
+    weather: { ...WEATHER_FORECAST[5] },
   },
 ];
 
@@ -259,9 +273,9 @@ export const ALT_STOPS: ItineraryStop[] = [
     address: 'Piazzale Stazione, 30171 Mestre',
     mapsQuery: 'Venezia Mestre Train Station',
     isRainFriendly: true,
-    estimatedCost: '≈ 1.50 € + 1.50 € + tren bileti',
+    estimatedCost: '≈ 9,50 € (vapur, 75 dk bilet) + tren bileti',
     closingAlert: 'Pass bu gün geçerli değildir; Mestre–Padova için ayrı bir Trenitalia bileti zorunludur.',
-    practicalAdvice: 'Biletinizi trene binmeden önce makineden alıp doğrulayın. Pass bitmişse Lido–Piazzale Roma vapuru için tek yön bilet gerekir.',
+    practicalAdvice: 'Biletinizi trene binmeden önce makineden alıp doğrulayın. Pass bitmişse Lido–Piazzale Roma vapuru için tek yön bilet gerekir (güncel fiyat ≈ 9,50 €, 75 dakika geçerli; ACTV uygulamasından teyit edin).',
   },
   {
     id: 'alt-d3-bike-rent',
@@ -338,5 +352,56 @@ export const ALT_STOPS: ItineraryStop[] = [
     isRainFriendly: true,
     estimatedCost: 'Tren bileti',
     practicalAdvice: 'Bisikleti uygulamada kilitleyip kiralamayı bitirdiğinizden emin olun, aksi halde süre işlemeye devam eder.',
+  },
+
+  // --- GÜN 4: MESTRE & HAVALİMANI ---
+  {
+    id: 'alt-d4-lido-mestre',
+    day: 4,
+    timeRange: '08:00 - 09:30',
+    title: 'Lido → Piazzale Roma → Mestre',
+    subtitle: 'Valizlerle vapur ve ardından tramvay / otobüs ile Mestre’ye',
+    category: 'transport',
+    coordinates: [45.4818, 12.2316],
+    locationName: 'Stazione di Venezia Mestre',
+    address: 'Piazzale Stazione, 30171 Mestre',
+    mapsQuery: 'Stazione di Venezia Mestre',
+    isRainFriendly: true,
+    estimatedCost: '≈ 9,50 € (75 dk bilet) + Mestre içi tramvay/otobüs',
+    practicalAdvice: 'Lido’dan Hat 1 ile Piazzale Roma’ya (≈ 1 saat), oradan tramvay T1 veya otobüs ile Mestre’ye (≈ 15-20 dk). Alternatif: vapurla Santa Lucia, oradan tren ile Mestre (≈ 10 dk). Uçuş saatinize göre yola erken çıkın.',
+    closingAlert: 'Valizle Venedik köprülerinde merdiven var; Piazzale Roma’da tramvaya yürüyüş kısa ama dikkatli olun.',
+  },
+  {
+    id: 'alt-d4-mestre-break',
+    day: 4,
+    timeRange: '09:30 - 12:00',
+    title: 'Mestre Son Mola',
+    subtitle: 'Piazza Ferretto, kahve ve market alışverişi; isteğe bağlı bagaj emanet',
+    category: 'coffee',
+    coordinates: [45.4903, 12.2431],
+    locationName: 'Piazza Ferretto, Mestre',
+    address: 'Piazza Ferretto, 30174 Mestre',
+    mapsQuery: 'Piazza Ferretto Mestre',
+    isRainFriendly: true,
+    estimatedCost: '3 € - 10 €',
+    orderTips: ['Bar tezgâhında ayakta espresso ve kruvasan', 'Marketten yol için su ve atıştırmalık'],
+    practicalAdvice: 'Uçuşunuz öğleden sonraysa burada rahatça bekleyebilirsiniz; erken uçuşta bu durağı atlayıp doğrudan havalimanı otobüsüne geçin.',
+  },
+  {
+    id: 'alt-d4-airport',
+    day: 4,
+    timeRange: '12:00 - 13:00',
+    title: 'Mestre → Marco Polo Havalimanı',
+    subtitle: 'ATVO 35B ya da ACTV 15 ile ≈ 20-35 dk',
+    category: 'transport',
+    coordinates: [45.4825, 12.2314],
+    locationName: 'Mestre Tren İstasyonu Önü',
+    address: 'Viale Stazione, Mestre',
+    mapsQuery: 'Stazione di Venezia Mestre',
+    isRainFriendly: true,
+    estimatedCost: '≈ 10 € (ATVO, tahmini) · ACTV 15 daha ucuz',
+    transitInfo: OFFLINE_TRANSIT_ROUTES['mestre-to-airport'],
+    closingAlert: 'Uçuşunuzdan en az 2,5-3 saat önce havalimanında olacak şekilde saati kaydırın.',
+    practicalAdvice: 'Biletleri durak yanındaki ATVO gişesinden veya makineden alın; güncel fiyat ve seferleri atvo.it’ten teyit edin. Bagajla ATVO daha rahattır.',
   },
 ];

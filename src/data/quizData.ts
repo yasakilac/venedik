@@ -304,4 +304,104 @@ export const QUIZZES: Quiz[] = [
     },
   },
 
+
+  // ================= KOKOLOJİ =================
+  // Kokoloji: Isamu Saito ve Tadahiko Nagao’nun “ilk aklına geleni seç” tarzındaki hayal kurma oyunları kitabından
+  // esinlenen biçim. Aşağıdaki sorular özgündür; kitaptaki oyunlar kopyalanmamıştır.
+  {
+    id: 'kok-orman',
+    category: 'kokoloji',
+    emoji: '🌲',
+    title: 'Kokoloji: Orman Yolculuğu',
+    blurb: 'Hayal et: bir ormandasın. Düşünmeden, ilk aklına geleni seç.',
+    basis:
+      'Projektif varsayım (Frank, 1939): belirsiz bir durumu hayal ederken verdiğimiz tepkiler kendi eğilimlerimizi yansıtır (Rorschach ve cümle tamamlama testlerinin mantığı). Bilimsel geçerliliği tartışmalıdır (Lilienfeld, Wood & Garb, 2000); sonuçları kesin bir ölçüm değil, kendine bakmak için bir ayna olarak oku.',
+    mode: 'top',
+    dims: {
+      ozgur: { label: 'Özgür Ruh' },
+      guven: { label: 'Güvenlik Arayan' },
+      merak: { label: 'Meraklı Zihin' },
+      bag: { label: 'Bağ Kuran' },
+    },
+    questions: [
+      Q('Bir ormanın girişindesin. Önündeki yol nasıl?', o('Işıklı ve geniş bir yol', { guven: 1 }), o('Dolambaçlı, gizemli bir patika', { merak: 1 }), o('Yol yok, kendi yolumu açarım', { ozgur: 1 }), o('Uzaktan insan sesleri geliyor', { bag: 1 })),
+      Q('Yürürken bir hayvan karşına çıktı. İlk hangisi aklına geldi?', o('Kartal', { ozgur: 1 }), o('Kaplumbağa', { guven: 1 }), o('Baykuş', { merak: 1 }), o('Köpek', { bag: 1 })),
+      Q('Bir nehre geldin.', o('Köprüden geçerim', { guven: 1 }), o('Yüzerek geçerim', { ozgur: 1 }), o('Kıyıda durup akışı izlerim', { merak: 1 }), o('Karşıda biri el sallıyor, ona doğru giderim', { bag: 1 })),
+      Q('Ormanın ortasında bir ev var.', o('Kapıyı çalarım', { bag: 1 }), o('Pencereden içeriye bakarım', { merak: 1 }), o('Girer, kendi evim gibi yerleşirim', { guven: 1 }), o('Selam verip yoluma devam ederim', { ozgur: 1 })),
+      Q('Elinde bir şey taşıyorsun. O ne?', o('Pusula', { merak: 1 }), o('Fener', { guven: 1 }), o('Hiçbir şey, hafifim', { ozgur: 1 }), o('Birinin eli', { bag: 1 })),
+      Q('Hava kararıyor.', o('Ateş yakıp güvenli bir yer hazırlarım', { guven: 1 }), o('Yıldızlara bakarım, rotamı onlardan bulurum', { merak: 1 }), o('Hiç durmam, gece yürüyüşü güzel', { ozgur: 1 }), o('Yanımdakilerle ateşin etrafında otururum', { bag: 1 })),
+      Q('Ağaçların arasında parlayan bir şey gördün.', o('Yaklaşıp ne olduğunu çözmeye çalışırım', { merak: 1 }), o('Tehlikeli olabilir, uzak dururum', { guven: 1 }), o('Hemen peşinden koşarım', { ozgur: 1 }), o('Başkalarına da göstermek için çağırırım', { bag: 1 })),
+      Q('Ormanda kaybolsan ilk ne hissedersin?', o('Heyecan, bir macera başladı', { ozgur: 1 }), o('Biraz korku ama plan yaparım', { guven: 1 }), o('Merak, burada neler var?', { merak: 1 }), o('Yalnızlık, birini bulmak isterim', { bag: 1 })),
+    ],
+    results: {
+      ozgur: { emoji: '🦅', title: 'Özgür Ruh', text: 'Hayal dünyanda yolun, sınırın ve kuralın pek yok; sen kendi yolunu açıyorsun. Bağımsızlığa, hareket ve değişime değer verirsin. Dikkat: özgürlüğün yanında zaman zaman yakınlığa da yer açmak dengeni güçlendirir.' },
+      guven: { emoji: '🏡', title: 'Güvenlik Arayan', text: 'Hayalinde bile önce sağlam zemini, ışığı ve sığınağı seçiyorsun. Planlı, temkinli ve güven veren birisin. Belirsizlik karşısında biraz cesareti denemek keyifli sürprizler getirebilir.' },
+      merak: { emoji: '🦉', title: 'Meraklı Zihin', text: 'Gördüğün her ayrıntıyı anlamaya çalışıyorsun: yıldızlar, ışıklar, kapılar. Gözlemci, analitik ve öğrenmeye açıksın. Bazen düşünmeyi bırakıp deneyime atlamak sana iyi gelir.' },
+      bag: { emoji: '🤝', title: 'Bağ Kuran', text: 'Sesler, eller ve ateş başı sohbetleri hayalinde öne çıkıyor. Yalnızlıkta değil, insanlarla anlam buluyorsun. Sıcak ve ilgili birisin; kendi ihtiyaçlarını da ifade etmeyi unutma.' },
+    },
+  },
+  {
+    id: 'kok-cagrisim',
+    category: 'kokoloji',
+    emoji: '💭',
+    title: 'Kokoloji: Çağrışım Oyunu',
+    blurb: 'Bir kelime duyduğunda aklına ilk gelen şey ne? Hızlı seç.',
+    basis:
+      'Serbest çağrışım ve kelime çağrışımı testleri: Jung’un çağrışım deneyleri (Jung & Riklin, 1904-1910) ve projektif teknik geleneği. Aynı kelimeye verilen ilk tepki, o anki duygusal eğilimi yansıtabilir; ancak güvenilirliği sınırlıdır ve anlık ruh haline göre değişir.',
+    mode: 'top',
+    dims: {
+      huzur: { label: 'Huzur' },
+      heyecan: { label: 'Heyecan' },
+      ozlem: { label: 'Özlem' },
+      guc: { label: 'Güç' },
+    },
+    questions: [
+      Q('DENİZ', o('Dinginlik', { huzur: 1 }), o('Dalgalar ve macera', { heyecan: 1 }), o('Çocukluk yazları', { ozlem: 1 }), o('Uçsuz bucaksızlık ve derinlik', { guc: 1 })),
+      Q('KAPI', o('Sıcak bir ev', { huzur: 1 }), o('Yeni bir başlangıç', { heyecan: 1 }), o('Geride kalan bir geçmiş', { ozlem: 1 }), o('Anahtar benim elimde', { guc: 1 })),
+      Q('KÖPRÜ', o('Barışmak', { huzur: 1 }), o('Öte yakadaki keşif', { heyecan: 1 }), o('Eski bir yer', { ozlem: 1 }), o('Aştığım engeller', { guc: 1 })),
+      Q('AYNA', o('Kendimle baş başa kalmak', { huzur: 1 }), o('Merak: bir sonraki ben', { heyecan: 1 }), o('Eski fotoğraflar', { ozlem: 1 }), o('Etkileyici görünmek', { guc: 1 })),
+      Q('YAĞMUR', o('Pencere kenarında çay', { huzur: 1 }), o('Sırılsıklam koşmak', { heyecan: 1 }), o('Bir anıyı hatırlamak', { ozlem: 1 }), o('Fırtınaya meydan okumak', { guc: 1 })),
+      Q('MERDİVEN', o('Yavaş yavaş çıkmak', { huzur: 1 }), o('Üçer beşer atlamak', { heyecan: 1 }), o('Çocukluk evinin merdiveni', { ozlem: 1 }), o('En tepeye ulaşmak', { guc: 1 })),
+      Q('IŞIK', o('Mum ışığı', { huzur: 1 }), o('Havai fişek', { heyecan: 1 }), o('Eski bir lamba', { ozlem: 1 }), o('Sahnedeki projektör', { guc: 1 })),
+      Q('YOLCULUK', o('Eve dönüş', { huzur: 1 }), o('Bilinmeyene gitmek', { heyecan: 1 }), o('Geride bıraktıklarım', { ozlem: 1 }), o('Rotayı ben çizerim', { guc: 1 })),
+    ],
+    results: {
+      huzur: { emoji: '🕯️', title: 'Huzur Arayan', text: 'Çağrışımların sakinlik, sıcaklık ve güvenli alanlar etrafında toplanıyor. Şu sıralar dinlenmeye ve dengeye ihtiyaç duyuyor olabilirsin. Küçük ritüeller (çay, yürüyüş, sessiz bir akşam) sana iyi gelir.' },
+      heyecan: { emoji: '🎆', title: 'Heyecan Arayan', text: 'Yeni, hareketli ve bilinmeyen olan seni çağırıyor. Enerjin yüksek ve değişime hazırsın. Bu tatil için harika bir işaret: planın dışına çıkmaya ve spontane kalmaya alan bırak.' },
+      ozlem: { emoji: '📼', title: 'Özlem Taşıyan', text: 'Çağrışımların geçmişe, anılara ve eskiye dönük. Duygusal derinliğin ve hatırlama gücün yüksek. Nostalji güzel bir şey; ama bugünün anılarını da biriktirmeyi unutma.' },
+      guc: { emoji: '🏔️', title: 'Güç Arayan', text: 'Kontrol, başarı ve öne çıkma temaları baskın. Hedefe kararlı ve iddialı bir ruh halindesin. Gücünün yanında kırılganlığa da biraz yer açmak ilişkilerine iyi gelir.' },
+    },
+  },
+  {
+    id: 'kok-ev',
+    category: 'kokoloji',
+    emoji: '🏠',
+    title: 'Kokoloji: Hayalindeki Ev',
+    blurb: 'Gözünde bir ev canlandır. Odalar sana ne söylüyor?',
+    basis:
+      'Mekân projeksiyonu: hayali bir evi tasvir etmek, kişinin mahremiyet, paylaşım ve düzen eğilimlerini yansıtan projektif bir çalışmadır (ev-ağaç-insan çizim testleri geleneğinden esinlenir; Buck, 1948). Bilimsel geçerliliği sınırlıdır, kendine bakmak için bir oyun olarak düşün.',
+    mode: 'top',
+    dims: {
+      mahrem: { label: 'Sığınak Ruhu' },
+      paylas: { label: 'Ev Sahibi Ruhu' },
+      duzen: { label: 'Mimar Ruhu' },
+      yarat: { label: 'Sanatçı Ruhu' },
+    },
+    questions: [
+      Q('Evin kapısı…', o('Sağlam ve kilitli', { mahrem: 1 }), o('Hep açık, misafir kabul eder', { paylas: 1 }), o('Derli toplu, numaralı, düzenli', { duzen: 1 }), o('Rengarenk, tuhaf bir kapı', { yarat: 1 })),
+      Q('Salonun en dikkat çeken yeri?', o('Kitap ve tek kişilik koltuk', { mahrem: 1 }), o('Büyük sofra', { paylas: 1 }), o('Her şeyin yerli yerinde olduğu raflar', { duzen: 1 }), o('Duvarda eserler, plaklar, bitkiler', { yarat: 1 })),
+      Q('Yatak odanda en önemli şey?', o('Kalın perdeler ve sessizlik', { mahrem: 1 }), o('Misafir yatağı da var', { paylas: 1 }), o('Başucundaki düzenli plan defteri', { duzen: 1 }), o('Yastıklar, ışıklar, hayal kurma köşesi', { yarat: 1 })),
+      Q('Mutfakta…', o('Tek kişilik, kendime özel yemekler', { mahrem: 1 }), o('Herkes birlikte pişirir', { paylas: 1 }), o('Her şey etiketli ve düzenli', { duzen: 1 }), o('Yeni tarifler deniyorum', { yarat: 1 })),
+      Q('Bahçen nasıl?', o('Yüksek çitli, kimse görmez', { mahrem: 1 }), o('Masa, hamak ve çok sandalye', { paylas: 1 }), o('Budanmış çimler, düz sıralar', { duzen: 1 }), o('Vahşi çiçekler, heykeller', { yarat: 1 })),
+      Q('Çatı katında ne var?', o('Kimsenin bilmediği bir kaçış odası', { mahrem: 1 }), o('Film ve oyun odası', { paylas: 1 }), o('Arşiv ve depo', { duzen: 1 }), o('Atölye', { yarat: 1 })),
+      Q('Kilitli bir oda var. İçinde ne olabilir?', o('Sadece benim bildiğim şeyler', { mahrem: 1 }), o('Kutlamalar için sürprizler', { paylas: 1 }), o('Düzenli belgeler', { duzen: 1 }), o('Yarım kalmış fikirler ve projeler', { yarat: 1 })),
+      Q('Komşularınla ilişkin?', o('Selamlaşırız, mesafe iyi', { mahrem: 1 }), o('Herkesle sıcak ve yakınım', { paylas: 1 }), o('Net sınırlar ve kurallar', { duzen: 1 }), o('Garip ve ilginç insanlarla dostluk', { yarat: 1 })),
+    ],
+    results: {
+      mahrem: { emoji: '🏰', title: 'Sığınak Ruhu', text: 'Evin senin için bir kale: mahremiyet ve iç huzur ön planda. Derin, seçici ve gözlemcisin. Kapını bazen ardına kadar açmak yakınlarına seni daha iyi tanıma fırsatı verir.' },
+      paylas: { emoji: '🍷', title: 'Ev Sahibi Ruhu', text: 'Evin senin için paylaşım ve sohbet demek. Sıcak, cömert ve insanlarla enerji bulan birisin. Kendi dinlenme alanını korumayı da unutma.' },
+      duzen: { emoji: '📐', title: 'Mimar Ruhu', text: 'Hayalindeki ev planlı, temiz ve öngörülebilir. Düzen, güven ve kontrol sana huzur veriyor. Ara sıra kuralları esnetmek hayata biraz neşe katabilir.' },
+      yarat: { emoji: '🎨', title: 'Sanatçı Ruhu', text: 'Evin bir tuval gibi: renkli, farklı ve hikâyeli. Yaratıcı, meraklı ve özgün birisin. Projelerini tamamlamak için küçük adımlar ve düzen biraz yardımcı olur.' },
+    },
+  },
 ];

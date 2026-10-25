@@ -197,7 +197,7 @@ export const ALT_PLACE_DETAILS: Record<string, PlaceDetails> = {
   },
   'alt-d3-to-padova': {
     duration: '≈ 1 saat 30 dk - 2 saat (Lido → Padova)',
-    ticket: 'Lido–Venedik / Mestre tek yön ≈ 1,50 € (pass bitmişse); Mestre–Padova tren ≈ 4-5 €',
+    ticket: 'Vapur tek yön ≈ 9,50 € (75 dk bilet, pass bitmişse); Mestre tramvay/otobüs ≈ 1,50 €; Mestre–Padova tren ≈ 4-5 €',
     highlights: [
       'Mestre’den Padova’ya trenler sık kalkar, yolculuk ≈ 15-30 dk',
       'Regionale (R) en ucuz ve yavaştır; Regionale Veloce (RV) biraz hızlıdır',
@@ -281,6 +281,41 @@ export const ALT_PLACE_DETAILS: Record<string, PlaceDetails> = {
     ],
     nearby: 'Orto Botanico ve Prato della Valle ≈ 3-5 dk bisiklet.',
   },
+  'alt-d4-lido-mestre': {
+    duration: '≈ 1 saat 15 dk - 1 saat 45 dk',
+    ticket: 'Vapur ≈ 9,50 € (75 dk bilet; Mestre tramvay/otobüsünde geçerliliğini ACTV’den teyit edin)',
+    highlights: ['Hat 1 ile Büyük Kanal’a son bakış', 'Piazzale Roma’da tramvay T1 / otobüs aktarması'],
+    tips: [
+      'Valizi merdivenli köprülerden uzak tutmak için doğrudan vapur iskelesinden Piazzale Roma’ya inin.',
+      'Biletiniz yaklaşık 75 dakikadır; aktarmayı hızlı yapın.',
+      'Uçuş saatine göre toplam süreyi bol tutun (valiz, kalabalık, sefer aralığı).',
+    ],
+    nearby: 'Piazzale Roma tramvay durağı ve otogar yan yana.',
+  },
+  'alt-d4-mestre-break': {
+    hours: 'Kafeler yaklaşık 07:00-20:00; Pazar günü bazı dükkânlar kapalı',
+    ticket: 'Espresso ≈ 1,20-1,50 €; kruvasan ≈ 1,50-2 €',
+    duration: '≈ 1-2,5 saat',
+    highlights: ['Piazza Ferretto: Mestre’nin canlı ana meydanı', 'Mestre Garı yakınında market ve kafeler'],
+    tips: [
+      'Uçuşunuz geçse bile bu mola için üst sınır koyun; bavullu dolaşmak yorucu.',
+      'Gar çevresinde bagaj emanet (deposito bagagli) seçeneklerini önceden bakın.',
+      'Pazar günü bazı marketler erken kapanabilir; su ve atıştırmalığı erkenden alın.',
+    ],
+    nearby: 'Mestre Garı ≈ 10 dk yürüyüş.',
+  },
+  'alt-d4-airport': {
+    hours: 'ATVO 35B Mestre’den yaklaşık 04:30-22:15 (teyit edin); ACTV 15 de çalışır',
+    ticket: 'ATVO ≈ 10 € (tahmini); ACTV 15 daha ucuz ve daha yavaş',
+    duration: '≈ 20 dk (ATVO) - 35 dk (ACTV 15)',
+    highlights: ['Gar önünden doğrudan havalimanına otobüs', 'Tessera üzerinden terminal önüne varış'],
+    tips: [
+      'Uçuşunuzdan en az 2,5-3 saat önce havalimanında olacak şekilde yola çıkın.',
+      'Bilet fiyatı ve seferleri atvo.it ve ACTV’den teyit edin; yazdığım fiyatlar tahmindir.',
+      'Bagajla ATVO daha konforludur; ACTV 15 ucuz ama daha uzun sürer.',
+    ],
+    nearby: 'Havalimanı terminalinde bagaj teslim ve kontrol hızla yapılır.',
+  },
   'alt-d3-return': {
     duration: '≈ 1 saat (iade + yolculuk)',
     ticket: 'Padova–Mestre tren ≈ 4-5 €; Mestre–Lido için pass yoksa tek yön bilet',
@@ -357,6 +392,15 @@ export const ALT_ACCESS_INFO: Record<string, AccessInfo> = {
   },
   'alt-d3-lunch': { alt: PADOVA, route: 'Prato’dan Piazza delle Erbe ≈ 10 dk bisiklet.' },
   'alt-d3-sant-antonio': { alt: PADOVA, route: 'Piazza delle Erbe’den ≈ 10 dk bisiklet veya tramvay SIR1.' },
+  'alt-d4-lido-mestre': {
+    alt: 'Vapur Hat 1 Lido → Piazzale Roma, ardından tramvay T1 veya otobüs ile Mestre.',
+    route: 'Alternatif: Lido → Santa Lucia vapuru, Santa Lucia → Mestre tren (≈ 10 dk).',
+  },
+  'alt-d4-mestre-break': { alt: 'Mestre Garı’ndan Piazza Ferretto’ya ≈ 10-15 dk yürüyüş veya kısa otobüs.' },
+  'alt-d4-airport': {
+    alt: 'ATVO 35B (≈ 20 dk) veya ACTV 15 (daha ucuz, daha yavaş); Mestre Garı önünden.',
+    route: 'Alternatif: taksi (tahmini ≈ 25-35 €). Havalimanına tren yoktur.',
+  },
   'alt-d3-return': {
     alt: 'Padova → Mestre trenle ≈ 15-25 dk, ardından Lido için otobüs / vapur.',
     route: 'Alternatif: Padova → Santa Lucia doğrudan tren, sonra vapur ile Lido.',

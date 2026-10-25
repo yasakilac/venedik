@@ -30,7 +30,7 @@ export interface TransitScheduleInfo {
 
 export interface ItineraryStop {
   id: string;
-  day: 1 | 2 | 3 | 4;
+  day: 1 | 2 | 3 | 4 | 5;
   timeRange: string;
   title: string;
   subtitle: string;
@@ -68,7 +68,7 @@ export interface HourlyWeather {
 }
 
 export interface DayWeather {
-  dayNumber: 1 | 2 | 3 | 4;
+  dayNumber: 1 | 2 | 3 | 4 | 5;
   dateStr: string;
   tempHigh: number;
   tempLow: number;
@@ -83,7 +83,7 @@ export interface DayWeather {
 }
 
 export interface DayInfo {
-  dayNumber: 1 | 2 | 3 | 4;
+  dayNumber: 1 | 2 | 3 | 4 | 5;
   dateStr: string;
   dayName: string;
   title: string;

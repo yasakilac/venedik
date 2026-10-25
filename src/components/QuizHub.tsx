@@ -3,7 +3,7 @@ import { ArrowLeft, ChevronRight, RotateCcw, FlaskConical } from 'lucide-react';
 import { CATEGORY_INFO, QUIZZES, Quiz, QuizCategory, QuizOption } from '../data/quizData';
 
 // Şimdilik yayında olan kategoriler
-const ACTIVE_CATEGORIES: QuizCategory[] = ['kisilik', 'iliski'];
+const ACTIVE_CATEGORIES: QuizCategory[] = ['kisilik', 'iliski', 'kokoloji'];
 
 const STORAGE_KEY = 'veneto_quiz_results_v1';
 
