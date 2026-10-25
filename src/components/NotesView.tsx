@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { DAYS_INFO } from '../data/itineraryData';
 import { getCustomNotes, saveStopNote } from '../utils/storage';
+import { QuizHub } from './QuizHub';
 
 const ICON_LEGEND: { Icon: React.ComponentType<{ className?: string }>; label: string }[] = [
   { Icon: Clock, label: 'Saat / çalışma saatleri' },
@@ -60,6 +61,7 @@ const ICON_LEGEND: { Icon: React.ComponentType<{ className?: string }>; label: s
 export const NotesView: React.FC = () => {
   const [notes, setNotes] = useState<Record<string, string>>(getCustomNotes());
   const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [section, setSection] = useState<'notes' | 'tests'>('notes');
 
   const handleSave = (key: string) => {
     saveStopNote(key, notes[key] || '');
@@ -73,6 +75,27 @@ export const NotesView: React.FC = () => {
         <StickyNote className="w-5 h-5 text-amber-700" />
         <h2 className="text-lg font-bold font-serif-heading text-slate-900">Notlar</h2>
       </div>
+
+      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Notlar menüsü">
+        {([['notes', 'Notlar & Rehber'], ['tests', '🧪 Eğlenceli Testler']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={section === id}
+            onClick={() => setSection(id)}
+            className={`min-h-[44px] rounded-2xl text-sm font-semibold border cursor-pointer transition-colors ${
+              section === id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {section === 'tests' && <QuizHub />}
+      {section === 'notes' && (
+        <>
 
       <details className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
         <summary className="text-sm font-bold text-slate-900 cursor-pointer min-h-[32px] flex items-center">
@@ -144,6 +167,8 @@ export const NotesView: React.FC = () => {
           </section>
         );
       })}
+        </>
+      )}
     </div>
   );
 };
