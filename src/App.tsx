@@ -44,7 +44,7 @@ import {
 function PlanSwitcher({ plan, onSelect }: { plan: 'main' | 'alt'; onSelect: (p: 'main' | 'alt') => void }) {
   const options: { id: 'main' | 'alt'; label: string; hint: string }[] = [
     { id: 'main', label: 'Ana Plan', hint: '4 gün · Padova & Venedik' },
-    { id: 'alt', label: 'Alternatif Plan', hint: '3 gün · Lido, adalar, Padova bisiklet' },
+    { id: 'alt', label: 'Alternatif Plan', hint: '4 gün · Lido, adalar, Padova, havalimanı' },
   ];
   return (
     <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Plan seçimi">

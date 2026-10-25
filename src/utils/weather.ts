@@ -8,6 +8,7 @@ const TRIP_DATES: Record<number, string> = {
   2: '2026-10-22',
   3: '2026-10-23',
   4: '2026-10-24',
+  5: '2026-10-25',
 };
 // Gün 1 Padova, Gün 3 lagün adaları, diğerleri Venedik
 const PLACES: Record<number, [number, number]> = {
@@ -15,6 +16,7 @@ const PLACES: Record<number, [number, number]> = {
   2: [45.4371, 12.3326],
   3: [45.4854, 12.4167],
   4: [45.4371, 12.3326],
+  5: [45.4818, 12.2316], // Mestre
 };
 
 export interface LiveDay {
@@ -132,7 +134,7 @@ export async function refreshWeather(): Promise<LiveWeather | null> {
   const prev = loadCachedWeather();
   const days: Record<number, LiveDay> = { ...(prev?.days ?? {}) };
   let any = false;
-  const results = await Promise.all([1, 2, 3, 4].map((d) => fetchPlace(d)));
+  const results = await Promise.all([1, 2, 3, 4, 5].map((d) => fetchPlace(d)));
   results.forEach((r, i) => {
     if (r) {
       days[i + 1] = r;
